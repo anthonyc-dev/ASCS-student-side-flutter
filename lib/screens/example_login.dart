@@ -182,6 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   onPressed: () {
                     // _login();
+                    _login();
                     Navigator.pushReplacementNamed(context, '/home');
                   },
                   child: Text(

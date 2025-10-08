@@ -23,7 +23,7 @@ class CustomNavBar extends StatelessWidget {
       tabActiveBorder: Border.all(color: Colors.black, width: 1),
       tabBorder: Border.all(color: Colors.grey, width: 1),
       tabShadow: [
-        BoxShadow(color: Colors.grey.withOpacity(0.5), blurRadius: 8),
+        BoxShadow(color: Colors.grey.withValues(alpha: 0.5), blurRadius: 8),
       ],
       curve: Curves.easeOutExpo,
       duration: const Duration(milliseconds: 900),
@@ -31,7 +31,7 @@ class CustomNavBar extends StatelessWidget {
       color: Colors.grey[800],
       activeColor: Colors.purple,
       iconSize: 24,
-      tabBackgroundColor: Colors.purple.withOpacity(0.1),
+      tabBackgroundColor: Colors.purple.withValues(alpha: 0.1),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
       selectedIndex: selectedIndex, // pass 0 for Home, 1 for Likes, etc.
       onTabChange: onItemTapped,
