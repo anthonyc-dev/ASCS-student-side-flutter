@@ -55,12 +55,13 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // --- Logo ---
+              const SizedBox(height: 20),
               Align(
                 alignment: Alignment.topLeft,
                 child: Image.asset(
                   "images/microflux/MICRO FLUX ico.png",
-                  height: 100,
-                  width: 100,
+                  height: 80,
+                  width: 80,
                   fit: BoxFit.contain,
                 ),
               ),
