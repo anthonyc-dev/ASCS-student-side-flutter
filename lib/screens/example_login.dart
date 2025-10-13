@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -14,31 +15,78 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  void _login() async {
+  Future<void> _login() async {
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
-    Authentication auth = Authentication();
-    String result = await auth.login(
+    if (email.isEmpty || password.isEmpty) {
+      showSnackBar(context, "Please fill all fields.");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // Show Cupertino loading dialog
+    showCupertinoDialog(
       context: context,
-      email: email,
-      password: password,
+      barrierDismissible: false,
+      builder: (_) => const CupertinoAlertDialog(
+        title: Text("Logging In"),
+        content: Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: CupertinoActivityIndicator(radius: 14),
+        ),
+      ),
     );
 
-    if (!mounted) return;
+    try {
+      final auth = Authentication();
+      final result = await auth.login(
+        context: context,
+        email: email,
+        password: password,
+      );
 
-    if (result != "Success") {
-      showSnackBar(context, result);
+      // ✅ Always close dialog safely
+      if (!mounted) return;
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
 
-      _emailController.clear();
-      _passwordController.clear();
-    } else {
-      // Show error message but do NOT navigate
-      showSnackBar(context, result);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (result == "Success") {
+        showSnackBar(context, "Login successful!");
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home', // Your home route
+          (route) => false, // Remove all previous routes
+        );
+      } else {
+        showSnackBar(context, result);
+        _emailController.clear();
+        _passwordController.clear();
+      }
+    } catch (error) {
+      // ✅ Handle unexpected exceptions
+      if (!mounted) return;
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      setState(() => _isLoading = false);
+      showSnackBar(context, "Unexpected error: $error");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -54,7 +102,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Logo ---
               const SizedBox(height: 20),
               Align(
                 alignment: Alignment.topLeft,
@@ -65,10 +112,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   fit: BoxFit.contain,
                 ),
               ),
-
               const SizedBox(height: 20),
 
-              // --- Title ---
               Text(
                 "Welcome back,",
                 style: GoogleFonts.poppins(
@@ -87,7 +132,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // --- Email Field ---
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
@@ -107,7 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // --- Password Field ---
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -138,7 +181,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 10),
 
-              // --- Remember Me + Forgot Password ---
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -176,18 +218,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
+                    backgroundColor:
+                        _isLoading ? Colors.grey : primaryBlue, // disabled look
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  onPressed: () {
-                    // _login();
-                    _login();
-                    // Navigator.pushReplacementNamed(context, '/home');
-                  },
+                  onPressed: _isLoading ? null : _login, // disable when loading
                   child: Text(
-                    "Sign In",
+                    _isLoading ? "Signing In..." : "Sign In",
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -198,7 +237,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // --- Create Account Button ---
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -209,9 +247,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     side: const BorderSide(color: Colors.grey),
                   ),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/register');
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () => Navigator.pushNamed(context, '/register'),
                   child: Text(
                     "Create Account",
                     style: GoogleFonts.poppins(
@@ -224,7 +262,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 30),
 
-              // --- Or Sign in with ---
               Center(
                 child: Column(
                   children: [
