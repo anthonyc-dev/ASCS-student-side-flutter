@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/widgets/snackbar.dart';
@@ -25,6 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _agreePolicy = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _isLoading = false;
 
   final _formKey = GlobalKey<FormState>();
 
@@ -54,26 +56,68 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    Authentication auth = Authentication();
-    String result = await auth.signUp(
+    setState(() => _isLoading = true);
+
+    // Show Cupertino loading dialog
+    showCupertinoDialog(
       context: context,
-      schoolId: _schoolIdController.text.trim(),
-      firstName: _firstNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-      email: _emailController.text.trim(),
-      phoneNumber: _phoneController.text.trim(),
-      program: _selectedProgram!,
-      yearLevel: _selectedYearLevel!,
-      password: _passwordController.text.trim(),
+      barrierDismissible: false,
+      builder: (_) => const CupertinoAlertDialog(
+        title: Text("Logging In"),
+        content: Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: CupertinoActivityIndicator(radius: 14),
+        ),
+      ),
     );
 
-    if (!mounted) return;
+    try {
+      Authentication auth = Authentication();
+      String result = await auth.signUp(
+        context: context,
+        schoolId: _schoolIdController.text.trim(),
+        firstName: _firstNameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
+        email: _emailController.text.trim(),
+        phoneNumber: _phoneController.text.trim(),
+        program: _selectedProgram!,
+        yearLevel: _selectedYearLevel!,
+        password: _passwordController.text.trim(),
+      );
 
-    if (result == "Success") {
-      showSnackBar(context, "Account created successfully!");
-      _clearFields();
-    } else {
-      showSnackBar(context, result);
+      // ✅ Always close dialog safely
+      // if (!mounted) return;
+      // if (Navigator.canPop(context)) {
+      //   Navigator.of(context, rootNavigator: true).pop();
+      // }
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (result == "Success") {
+        showSnackBar(context, "Account created successfully!");
+        _clearFields();
+
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/login', // Your home route
+          (route) => false, // Remove all previous routes
+        );
+      } else {
+        showSnackBar(context, result);
+      }
+    } catch (error) {
+      // ✅ Handle unexpected exceptions
+      if (!mounted) return;
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      setState(() => _isLoading = false);
+      showSnackBar(context, "Unexpected error: $error");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -317,9 +361,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    onPressed: _signUp,
+                    onPressed: _isLoading ? null : _signUp,
                     child: Text(
-                      "Create Account",
+                      _isLoading ? "Creating Account..." : "Create Account",
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,

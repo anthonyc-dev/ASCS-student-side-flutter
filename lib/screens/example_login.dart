@@ -16,7 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
-  final _formKey = GlobalKey<FormState>(); // Key to identify the form
+  final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -82,8 +82,8 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         showSnackBar(context, result);
-        _emailController.clear();
-        _passwordController.clear();
+        // _emailController.clear();
+        // _passwordController.clear();
       }
     } catch (error) {
       // ✅ Handle unexpected exceptions
