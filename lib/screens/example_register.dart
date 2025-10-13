@@ -11,7 +11,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController _studentIdController = TextEditingController();
+  final TextEditingController _schoolIdController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -19,46 +19,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _cpasswordController = TextEditingController();
 
+  String? _selectedProgram;
+  String? _selectedYearLevel;
+
   bool _agreePolicy = false;
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
-  void _signUp() async {
-    // Validate NDA acceptance
+  final List<String> _programs = [
+    'BS Computer Science',
+    'BS Information Technology',
+    'BS Information Systems',
+    'BS Software Engineering',
+  ];
 
-    String studentId = _studentIdController.text.trim();
+  final List<String> _yearLevels = [
+    '1st Year',
+    '2nd Year',
+    '3rd Year',
+    '4th Year',
+  ];
+
+  void _signUp() async {
+    String schoolId = _schoolIdController.text.trim();
     String firstName = _firstNameController.text.trim();
     String lastName = _lastNameController.text.trim();
     String email = _emailController.text.trim();
     String phoneNumber = _phoneController.text.trim();
+    String program = _selectedProgram ?? '';
+    String yearLevel = _selectedYearLevel ?? '';
     String password = _passwordController.text.trim();
+    String confirmPassword = _cpasswordController.text.trim();
+
+    if (password != confirmPassword) {
+      showSnackBar(context, "Passwords do not match!");
+      return;
+    }
+
+    if (!_agreePolicy) {
+      showSnackBar(context, "Please agree to the Privacy Policy first.");
+      return;
+    }
 
     Authentication auth = Authentication();
     String result = await auth.signUp(
       context: context,
-      studentId: studentId,
+      schoolId: schoolId,
       firstName: firstName,
       lastName: lastName,
       email: email,
       phoneNumber: phoneNumber,
+      program: program,
+      yearLevel: yearLevel,
       password: password,
     );
 
     if (!mounted) return;
 
-    if (result != "Success") {
-      showSnackBar(context, result);
-      // Clear input fields on successful registration
-      _studentIdController.clear();
-      _firstNameController.clear();
-      _lastNameController.clear();
-      _emailController.clear();
-      _phoneController.clear();
-      _passwordController.clear();
+    if (result == "Success") {
+      showSnackBar(context, "Account created successfully!");
+      _clearFields();
     } else {
-      // Show error message but do NOT navigate
       showSnackBar(context, result);
     }
+  }
+
+  void _clearFields() {
+    _schoolIdController.clear();
+    _firstNameController.clear();
+    _lastNameController.clear();
+    _emailController.clear();
+    _phoneController.clear();
+    _passwordController.clear();
+    _cpasswordController.clear();
+    setState(() {
+      _selectedProgram = null;
+      _selectedYearLevel = null;
+      _agreePolicy = false;
+    });
   }
 
   @override
@@ -117,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               // --- Student ID ---
               _buildTextField(
-                controller: _studentIdController,
+                controller: _schoolIdController,
                 label: "Student ID",
                 icon: Icons.badge_outlined,
               ),
@@ -139,65 +177,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
 
+              // --- Program Dropdown ---
+              _buildDropdownField(
+                label: "Program",
+                icon: Icons.list_alt_outlined,
+                value: _selectedProgram,
+                items: _programs,
+                onChanged: (value) {
+                  setState(() => _selectedProgram = value);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // --- Year Level Dropdown ---
+              _buildDropdownField(
+                label: "Year Level",
+                icon: Icons.calendar_month_outlined,
+                value: _selectedYearLevel,
+                items: _yearLevels,
+                onChanged: (value) {
+                  setState(() => _selectedYearLevel = value);
+                },
+              ),
+              const SizedBox(height: 16),
+
               // --- Password ---
-              TextField(
+              _buildPasswordField(
                 controller: _passwordController,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: "Password",
-                  labelStyle: GoogleFonts.poppins(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                label: "Password",
+                obscure: _obscurePassword,
+                toggleVisibility: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
               const SizedBox(height: 20),
 
-              // --- confirm Password ---
-              TextField(
+              // --- Confirm Password ---
+              _buildPasswordField(
                 controller: _cpasswordController,
-                obscureText: _obscureConfirm,
-                decoration: InputDecoration(
-                  labelText: "Confirm Password",
-                  labelStyle: GoogleFonts.poppins(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureConfirm
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                    ),
-                    onPressed: () {
-                      setState(() => _obscureConfirm = !_obscureConfirm);
-                    },
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[100],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+                label: "Confirm Password",
+                obscure: _obscureConfirm,
+                toggleVisibility: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
               ),
               const SizedBox(height: 20),
 
@@ -254,19 +274,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  onPressed: () {
-                    if (!_agreePolicy) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content:
-                              Text("Please agree to the Privacy Policy first."),
-                        ),
-                      );
-                      return;
-                    }
-                    //  Handle register logic
-                    _signUp();
-                  },
+                  onPressed: _signUp,
                   child: Text(
                     "Create Account",
                     style: GoogleFonts.poppins(
@@ -285,6 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  // --- Text Field Builder ---
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -299,6 +308,74 @@ class _RegisterScreenState extends State<RegisterScreen> {
           fontSize: 14,
         ),
         prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  // --- Dropdown Field Builder ---
+  Widget _buildDropdownField({
+    required String label,
+    required IconData icon,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        labelText: label,
+        labelStyle: GoogleFonts.poppins(
+          color: Colors.grey[600],
+          fontSize: 14,
+        ),
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.grey[100],
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      initialValue: value,
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(item),
+              ))
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  // --- Password Field Builder ---
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+    required VoidCallback toggleVisibility,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: GoogleFonts.poppins(
+          color: Colors.grey[600],
+          fontSize: 14,
+        ),
+        prefixIcon: const Icon(Icons.lock_outline),
+        suffixIcon: IconButton(
+          icon: Icon(
+            obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          ),
+          onPressed: toggleVisibility,
+        ),
         filled: true,
         fillColor: Colors.grey[100],
         border: OutlineInputBorder(

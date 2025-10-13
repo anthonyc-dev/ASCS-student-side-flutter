@@ -2,9 +2,32 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/widgets/menu_anchor.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class StudentProfileScreen extends StatelessWidget {
+class StudentProfileScreen extends StatefulWidget {
   const StudentProfileScreen({super.key});
+
+  @override
+  State<StudentProfileScreen> createState() => _StudentProfileScreenState();
+}
+
+class _StudentProfileScreenState extends State<StudentProfileScreen> {
+  String name = '';
+  String schoolId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      name = prefs.getString('firstName') ?? 'Unknown Student';
+      schoolId = prefs.getString('userSchoolId') ?? 'N/A';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +108,7 @@ class StudentProfileScreen extends StatelessWidget {
             const SizedBox(height: 18),
             // Student Name & School ID
             Text(
-              'Anthony Crausus',
+              name,
               style: GoogleFonts.poppins(
                 fontSize: 22,
                 fontWeight: FontWeight.w500,
@@ -95,7 +118,7 @@ class StudentProfileScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Bachelor of Science in Computer Science',
+              'BS Computer Science',
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -111,7 +134,7 @@ class StudentProfileScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'School ID: 21-0882',
+                'School ID: $schoolId',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   color: Colors.grey[700],

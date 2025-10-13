@@ -1,32 +1,44 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class DialogUtil {
   static void showSuccessDialog(
     BuildContext context,
     String message, {
-    String route = "/home",
+    String? route = "/home",
   }) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Success", style: GoogleFonts.outfit()),
-          content: Text(message, style: GoogleFonts.outfit()),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-                Navigator.pushReplacementNamed(
-                  context,
-                  route,
-                ); // Navigate to specified route
-              },
-              child: Text("OK", style: GoogleFonts.outfit()),
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(
+          'Success',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+        ),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Text(
+            message,
+            style: GoogleFonts.outfit(fontSize: 15),
+          ),
+        ),
+        actions: [
+          if (route != null && route.isNotEmpty)
+            CupertinoDialogAction(
+              child: const Text('Back'),
+              onPressed: () => Navigator.pop(context),
             ),
-          ],
-        );
-      },
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('OK'),
+            onPressed: () {
+              Navigator.pop(context);
+              if (route != null && route.isNotEmpty) {
+                Navigator.pushReplacementNamed(context, route);
+              }
+            },
+          ),
+        ],
+      ),
     );
   }
 }

@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:my_app/widgets/show_modal.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Authentication {
   String apiUrl = dotenv.env['API_URL'] ?? "Default URL";
@@ -15,7 +15,7 @@ class Authentication {
     required String password,
   }) async {
     try {
-      var url = Uri.parse("$apiUrl/login");
+      var url = Uri.parse("$apiUrl/loginStudent");
 
       var response = await http.post(
         url,
@@ -25,6 +25,13 @@ class Authentication {
 
       if (response.statusCode == 200) {
         var data = jsonDecode(response.body);
+        var student =
+            data["student"]; // ← assuming your API returns this structure
+
+        // Save user info to local storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("firstName", student["firstName"]);
+        await prefs.setString("userSchoolId", student["schoolId"]);
 
         if (!context.mounted) return '';
         DialogUtil.showSuccessDialog(
@@ -32,13 +39,10 @@ class Authentication {
           data["message"] ?? "Login successful!",
         );
 
-        return data["message"] ?? "Login successful!";
+        return "Success";
       } else {
         var errorData = jsonDecode(response.body);
-        if (kDebugMode) {
-          print(errorData["error"]);
-        }
-        return errorData["error"] ?? "Failed to sign up. Please try again.";
+        return errorData["error"] ?? "Failed to log in. Please try again.";
       }
     } on http.ClientException {
       return "Network error. Please check your internet connection.";
@@ -52,27 +56,30 @@ class Authentication {
   //sign up
   Future<String> signUp({
     required BuildContext context,
-    required String studentId,
+    required String schoolId,
     required String firstName,
     required String lastName,
     required String email,
     required String phoneNumber,
+    required String program,
+    required String yearLevel,
     required String password,
   }) async {
     try {
-      var url = Uri.parse("$apiUrl/register");
+      var url = Uri.parse("$apiUrl/registerStudent");
 
       var response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "studentId": studentId,
+          "schoolId": schoolId,
           "firstName": firstName,
           "lastName": lastName,
           "email": email,
           "phoneNumber": phoneNumber,
+          "program": program,
+          "yearLevel": yearLevel,
           "password": password,
-          "role": "student",
         }),
       );
 
@@ -81,7 +88,7 @@ class Authentication {
         var data = jsonDecode(response.body);
 
         if (!context.mounted) return '';
-        Navigator.pushReplacementNamed(context, "/signin");
+        Navigator.pushReplacementNamed(context, "/login");
         return data["message"] ?? "Registration successful!";
       } else {
         var errorData = jsonDecode(response.body);

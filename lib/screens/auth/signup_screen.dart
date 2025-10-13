@@ -13,11 +13,13 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  final TextEditingController _studentIdController = TextEditingController();
+  final TextEditingController _schoolIdController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _programController = TextEditingController();
+  final TextEditingController _yearLevelController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _cpasswordController = TextEditingController();
 
@@ -32,21 +34,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    String studentId = _studentIdController.text.trim();
+    String schoolId = _schoolIdController.text.trim();
     String firstName = _firstNameController.text.trim();
     String lastName = _lastNameController.text.trim();
     String email = _emailController.text.trim();
     String phoneNumber = _phoneController.text.trim();
+    String program = _programController.text.trim();
+    String yearLevel = _yearLevelController.text.trim();
     String password = _passwordController.text.trim();
 
     Authentication auth = Authentication();
     String result = await auth.signUp(
       context: context,
-      studentId: studentId,
+      schoolId: schoolId,
       firstName: firstName,
       lastName: lastName,
       email: email,
       phoneNumber: phoneNumber,
+      program: program,
+      yearLevel: yearLevel,
       password: password,
     );
 
@@ -55,11 +61,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (result != "Success") {
       showSnackBar(context, result);
       // Clear input fields on successful registration
-      _studentIdController.clear();
+      _schoolIdController.clear();
       _firstNameController.clear();
       _lastNameController.clear();
       _emailController.clear();
       _phoneController.clear();
+      _programController.clear();
+      _yearLevelController.clear();
       _passwordController.clear();
     } else {
       // Show error message but do NOT navigate
@@ -98,7 +106,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         children: [
                           TextFieldInput(
                             icon: Icons.badge,
-                            textEditingController: _studentIdController,
+                            textEditingController: _schoolIdController,
                             hintText: 'Enter your id number',
                             textInputType: TextInputType.text,
                             width: textFieldWidth,
