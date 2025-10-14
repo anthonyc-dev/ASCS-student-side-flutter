@@ -1,46 +1,45 @@
 name: Flutter CI
 
 on:
-    push:
-        branches:
-            - main
-            - master
-    pull_request:
-        branches:
-            - main
-            - master
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Set up Flutter
-              uses: subosito/flutter-action@v2
-              with:
-                  flutter-version: "3.35.5" # Set your desired Flutter version
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.35.5" # Set your desired Flutter version
 
-            - name: Install dependencies
-              run: flutter pub get
+      # ✅ Add this step before flutter pub get
+      - name: Create .env file
+        run: |
+          echo "API_URL=${{ secrets.API_URL }}" >> .env
 
-            - name: Analyze code
-              run: flutter analyze
+      - name: Install dependencies
+        run: flutter pub get
 
-            - name: Run tests
-              run: flutter test
+      - name: Analyze code
+        run: flutter analyze
 
-            # Optional: Build web app
-            # - name: Build web
-            #   run: flutter build web
+      - name: Run tests
+        run: flutter test
 
-            # Optional: Build Android APK
-            - name: Build APK
-              run: flutter build apk
+      # Optional: Build web app
+      # - name: Build web
+      #   run: flutter build web
 
-            # Optional: Build iOS (only works on macOS runners)
-            # - name: Build iOS
-            #   runs-on: macos-latest
-            #   run: flutter build ios
+      - name: Build APK
+        run: flutter build apk

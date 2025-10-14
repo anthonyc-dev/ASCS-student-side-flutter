@@ -6,11 +6,11 @@ class MenuAnchorWidget extends StatelessWidget {
   final void Function()? onNotification;
 
   const MenuAnchorWidget({
-    Key? key,
+    super.key,
     this.onProfile,
     this.onSettings,
     this.onNotification,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CustomInputDropdown extends StatefulWidget {
-  const CustomInputDropdown({Key? key}) : super(key: key);
+  const CustomInputDropdown({super.key});
 
   @override
   State<CustomInputDropdown> createState() => _CustomInputDropdownState();

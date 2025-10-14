@@ -29,11 +29,10 @@ Future main() async {
 }
 
 class MyApp extends StatelessWidget {
-  // const MyApp({super.key});
+  const MyApp({super.key, required this.seenOnboarding});
 
 // onboarding remove if there have error
   final bool seenOnboarding;
-  const MyApp({Key? key, required this.seenOnboarding}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
