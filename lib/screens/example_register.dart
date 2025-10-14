@@ -106,6 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       } else {
         showSnackBar(context, result);
+        setState(() => _isLoading = false);
       }
     } catch (error) {
       // ✅ Handle unexpected exceptions
@@ -114,8 +115,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         Navigator.of(context, rootNavigator: true).pop();
       }
 
-      setState(() => _isLoading = false);
       showSnackBar(context, "Unexpected error: $error");
+      setState(() => _isLoading = false);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
