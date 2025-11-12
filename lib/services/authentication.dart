@@ -15,7 +15,7 @@ class Authentication {
     required String password,
   }) async {
     try {
-      var url = Uri.parse("$apiUrl/loginStudent");
+      var url = Uri.parse("$apiUrl/student/loginStudent");
 
       var response = await http.post(
         url,
@@ -66,7 +66,7 @@ class Authentication {
     required String password,
   }) async {
     try {
-      var url = Uri.parse("$apiUrl/registerStudent");
+      var url = Uri.parse("$apiUrl/student/registerStudent");
 
       var response = await http.post(
         url,
