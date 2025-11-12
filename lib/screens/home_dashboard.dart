@@ -1,8 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:my_app/models/student.dart';
+import 'package:my_app/models/clearance.dart';
 import 'package:my_app/screens/nonifiocation.dart';
 import 'package:my_app/services/student_profile_service.dart';
+import 'package:my_app/services/clearance_service.dart';
+import 'package:my_app/services/student_requirement_service.dart';
+import 'package:intl/intl.dart';
 
 class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
@@ -13,7 +18,14 @@ class HomeDashboard extends StatefulWidget {
 
 class _HomeDashboardState extends State<HomeDashboard> {
   final StudentProfileService _profileService = StudentProfileService();
+  final ClearanceService _clearanceService = ClearanceService();
+  final StudentRequirementService _requirementService =
+      StudentRequirementService();
+
   Student? _student;
+  Clearance? _currentClearance;
+  int _signedCount = 0;
+  int _totalRequirements = 0;
   bool _isLoading = true;
 
   @override
@@ -32,9 +44,42 @@ class _HomeDashboardState extends State<HomeDashboard> {
       final schoolId = prefs.getString('userSchoolId');
 
       if (schoolId != null && schoolId.isNotEmpty) {
+        // Fetch student profile
         final student = await _profileService.getStudentBySchoolId(schoolId);
+
+        // Fetch current clearance
+        final clearance = await _clearanceService.getCurrentClearance();
+
+        // Fetch requirements to calculate progress
+        int signedCount = 0;
+        int totalCount = 0;
+
+        try {
+          // Fetch both types of requirements
+          final courseRequirements = await _requirementService
+              .getStudentRequirementsBySchoolId(schoolId);
+          final institutionalRequirements = await _requirementService
+              .getStudentInstitutionalRequirementsByStudentId(schoolId);
+          // Count total and signed requirements
+          totalCount =
+              courseRequirements.length + institutionalRequirements.length;
+          signedCount = courseRequirements
+                  .where((req) => req.status.toLowerCase() == 'signed')
+                  .length +
+              institutionalRequirements
+                  .where((req) => req.status.toLowerCase() == 'signed')
+                  .length;
+        } catch (e) {
+          if (kDebugMode) {
+            print('ERROR fetching requirements: $e');
+          }
+        }
+
         setState(() {
           _student = student;
+          _currentClearance = clearance;
+          _signedCount = signedCount;
+          _totalRequirements = totalCount;
           _isLoading = false;
         });
       } else {
@@ -235,7 +280,10 @@ class _HomeDashboardState extends State<HomeDashboard> {
                       Expanded(
                         child: _buildProgressCard(
                           title: "Clearance",
-                          percentage: 75,
+                          percentage: _totalRequirements > 0
+                              ? ((_signedCount / _totalRequirements) * 100)
+                                  .round()
+                              : 0,
                           color: Colors.white,
                           textColor: const Color(0xFF0A84FF),
                         ),
@@ -244,13 +292,19 @@ class _HomeDashboardState extends State<HomeDashboard> {
                       Expanded(
                         child: _buildProgressCard(
                           title: "Requirements",
-                          percentage: 9,
+                          percentage: _totalRequirements > 0
+                              ? ((_signedCount / _totalRequirements) * 100)
+                                  .round()
+                              : 0,
                           color: Colors.white,
-                          textColor: const Color(0xFF0A84FF),
+                          textColor: const Color(0xFF10B981),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  // Clearance Deadline Card
+                  if (_currentClearance != null) _buildDeadlineCard(),
                   const SizedBox(height: 25),
                   const Text(
                     "Quick Actions",
@@ -306,6 +360,97 @@ class _HomeDashboardState extends State<HomeDashboard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // --- Deadline Card ---
+  Widget _buildDeadlineCard() {
+    final deadline = _currentClearance!.effectiveDeadline;
+    final now = DateTime.now();
+    final daysLeft = deadline.difference(now).inDays;
+    final isOverdue = daysLeft < 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isOverdue
+              ? [const Color(0xFFEF4444), const Color(0xFFDC2626)]
+              : [const Color(0xFF0A84FF), const Color(0xFF0066CC)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color:
+                (isOverdue ? const Color(0xFFEF4444) : const Color(0xFF0A84FF))
+                    .withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isOverdue ? Icons.warning_rounded : Icons.calendar_today_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isOverdue ? "Clearance Overdue" : "Clearance Deadline",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('MMM dd, yyyy • hh:mm a').format(deadline),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              isOverdue
+                  ? "${daysLeft.abs()} days ago"
+                  : daysLeft == 0
+                      ? "Today"
+                      : "$daysLeft days left",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
