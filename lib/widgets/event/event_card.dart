@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class EventCard extends StatelessWidget {
+class EventCard extends StatefulWidget {
   final Map<String, dynamic> event;
   final void Function()? onAddToCalendar;
 
@@ -12,13 +12,17 @@ class EventCard extends StatelessWidget {
   });
 
   @override
+  State<EventCard> createState() => _EventCardState();
+}
+
+class _EventCardState extends State<EventCard> {
+  @override
   Widget build(BuildContext context) {
-    final String title = event['title'] ?? 'No Title';
-    final String description = event['description'] ?? '';
-    final String date = event['date'] ?? '';
-    final String venue = event['venue'] ?? '';
-    final Color iconColor = event['iconColor'] ?? Colors.blue;
-    final Color buttonColor = event['buttonColor'] ?? Colors.blue;
+    final String title = widget.event['title'] ?? 'No Title';
+    final String description = widget.event['description'] ?? '';
+    final String date = widget.event['date'] ?? '';
+    final String venue = widget.event['venue'] ?? '';
+    final Color iconColor = widget.event['iconColor'] ?? Colors.blue;
 
     return Container(
       width: double.infinity,
@@ -93,33 +97,39 @@ class EventCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            // Add to Calendar Button
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: buttonColor,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                icon: const Icon(Icons.event_available,
-                    size: 18, color: Colors.white),
-                label: const Text("Add to Calendar"),
-                onPressed: onAddToCalendar ??
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Event added to calendar!"),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-              ),
-            ),
+            // // Add to Calendar Button
+            // Align(
+            //   alignment: Alignment.centerRight,
+            //   child: ElevatedButton.icon(
+            //     style: ElevatedButton.styleFrom(
+            //       backgroundColor: buttonColor,
+            //       foregroundColor: Colors.white,
+            //       padding:
+            //           const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            //       shape: RoundedRectangleBorder(
+            //         borderRadius: BorderRadius.circular(10),
+            //       ),
+            //     ),
+            //     icon: _isAdding
+            //         ? const SizedBox(
+            //             width: 16,
+            //             height: 16,
+            //             child: CircularProgressIndicator(
+            //               color: Colors.white,
+            //               strokeWidth: 2,
+            //             ),
+            //           )
+            //         : const Icon(Icons.event_available,
+            //             size: 18, color: Colors.white),
+            //     label: Text(
+            //       _isAdding ? "Adding..." : "Add to Calendar",
+            //       style: const TextStyle(color: Colors.white),
+            //     ),
+            //     onPressed: _isAdding
+            //         ? null
+            //         : widget.onAddToCalendar ?? () => _addToCalendar(context),
+            //   ),
+            // ),
           ],
         ),
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:my_app/models/event.dart';
+import 'package:my_app/services/event_service.dart';
 import 'package:my_app/widgets/event/event_card.dart';
 import 'package:my_app/widgets/menu_anchor.dart';
 
@@ -12,50 +14,44 @@ class EventsPage extends StatefulWidget {
 }
 
 class _EventsPageState extends State<EventsPage> {
-  // Move the events list inside the state class
-  List<Map<String, dynamic>> events = [
-    {
-      "title": "Parents Meeting",
-      "description":
-          "Please tell your parents about the upcoming meeting. Attendance is a must.",
-      "date": "Apr 10, 2025 • 6:30 PM",
-      "venue": "Main Auditorium",
-    },
-    {
-      "title": "Sports Day",
-      "description":
-          "Join us for an exciting sports day filled with fun games!",
-      "date": "May 2, 2025 • 9:00 AM",
-      "venue": "Main Field",
-    },
-    {
-      "title": "Graduation Ceremony",
-      "description": "Celebrate the achievements of our graduates with us.",
-      "date": "Jun 15, 2025 • 2:00 PM",
-      "venue": "Main Auditorium",
-    },
-    {
-      "title": "Open House",
-      "description":
-          "Come and explore our campus and facilities. Meet our staff and students too!",
-      "date": "Jul 1, 2025 • 10:00 AM",
-      "venue": "Main Auditorium",
-    },
-    {
-      "title": "Welcome Back Party",
-      "description":
-          "Join us as we welcome back our students from the summer break. There will be food, drinks, and fun games!",
-      "date": "Aug 24, 2025 • 3:00 PM",
-      "venue": "Main Auditorium",
-    },
-  ];
+  final EventService _eventService = EventService();
+  List<Event> _events = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final events = await _eventService.getAllEvents();
+
+      setState(() {
+        _events = events;
+        _isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        _errorMessage = error.toString();
+        _isLoading = false;
+      });
+      if (kDebugMode) {
+        print("Error loading events: $error");
+      }
+    }
+  }
 
   // Refresh function
   Future<void> _refreshData() async {
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() {
-      events.shuffle(); // simulate data update
-    });
+    await _loadEvents();
   }
 
   @override
@@ -98,19 +94,106 @@ class _EventsPageState extends State<EventsPage> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: Colors.white,
-        backgroundColor: Colors.blue,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: events.length,
-          itemBuilder: (context, index) {
-            final event = events[index];
-            return EventCard(event: event);
-          },
-        ),
-      ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _errorMessage != null
+              ? RefreshIndicator(
+                  onRefresh: _refreshData,
+                  color: Colors.white,
+                  backgroundColor: Colors.blue,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height - 200,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 60,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Failed to load events',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: _loadEvents,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _refreshData,
+                  color: Colors.white,
+                  backgroundColor: Colors.blue,
+                  child: _events.isEmpty
+                      ? ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height - 200,
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.event_busy,
+                                      size: 60,
+                                      color: Colors.grey[400],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'No events available',
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _events.length,
+                          itemBuilder: (context, index) {
+                            final event = _events[index];
+                            return EventCard(event: event.toEventCardMap());
+                          },
+                        ),
+                ),
     );
   }
 }

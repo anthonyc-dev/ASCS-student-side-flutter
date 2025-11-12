@@ -1,9 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_app/models/student.dart';
 import 'package:my_app/screens/nonifiocation.dart';
-import 'package:my_app/screens/search_screen.dart';
+import 'package:my_app/services/student_profile_service.dart';
 
-class HomeDashboard extends StatelessWidget {
+class HomeDashboard extends StatefulWidget {
   const HomeDashboard({super.key});
+
+  @override
+  State<HomeDashboard> createState() => _HomeDashboardState();
+}
+
+class _HomeDashboardState extends State<HomeDashboard> {
+  final StudentProfileService _profileService = StudentProfileService();
+  Student? _student;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final schoolId = prefs.getString('userSchoolId');
+
+      if (schoolId != null && schoolId.isNotEmpty) {
+        final student = await _profileService.getStudentBySchoolId(schoolId);
+        setState(() {
+          _student = student;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (error) {
+      // If API fails, continue with loading state false
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +81,11 @@ class HomeDashboard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Column(
+                      // Display dynamic user data
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          const Text(
                             "Welcome Back!",
                             style: TextStyle(
                               color: Colors.white,
@@ -48,15 +94,24 @@ class HomeDashboard extends StatelessWidget {
                               letterSpacing: 0.5,
                             ),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            "John Doe • BSCS 3A",
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          const SizedBox(height: 4),
+                          _isLoading
+                              ? const SizedBox(
+                                  height: 14,
+                                  width: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white70,
+                                  ),
+                                )
+                              : Text(
+                                  "${_student?.fullName ?? 'Unknown Student'} • ${_student?.schoolId ?? 'N/A'}",
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                         ],
                       ),
 
@@ -71,8 +126,7 @@ class HomeDashboard extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: IconButton(
-                              padding:
-                                  EdgeInsets.zero, // remove default padding
+                              padding: EdgeInsets.zero,
                               icon: const Icon(
                                 Icons.notifications,
                                 color: Colors.white,
@@ -83,11 +137,10 @@ class HomeDashboard extends StatelessWidget {
                                   PageRouteBuilder(
                                     pageBuilder: (context, animation,
                                             secondaryAnimation) =>
-                                        const NotificationScreen(), // 👈 replace with your notif page widget
+                                        const NotificationScreen(),
                                     transitionsBuilder: (context, animation,
                                         secondaryAnimation, child) {
-                                      const begin = Offset(
-                                          1.0, 0.0); // from right to left
+                                      const begin = Offset(1.0, 0.0);
                                       const end = Offset.zero;
                                       const curve = Curves.easeInOut;
 
@@ -104,9 +157,7 @@ class HomeDashboard extends StatelessWidget {
                                   ),
                                 );
                               },
-
-                              splashRadius:
-                                  24, // keeps ripple neat inside circle
+                              splashRadius: 24,
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -131,45 +182,42 @@ class HomeDashboard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          // Progress Overview Cards
                         ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 38), // spacing before search bar
-                  GestureDetector(
-                    onTap: () {
-                      // 👉 Navigate when the search bar is tapped
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const SearchScreen()), // replace with your page
-                      );
-                    },
-                    child: const AbsorbPointer(
-                      // prevents keyboard from opening
-                      child: TextField(
-                        readOnly: true, // avoids typing, acts like a button
-                        style: TextStyle(color: Colors.black87),
-                        decoration: InputDecoration(
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide.none,
-                            borderRadius: BorderRadius.all(
-                              Radius.circular(12),
-                            ),
-                          ),
-                          hintText: "Search course...",
-                          hintStyle:
-                              TextStyle(color: Colors.grey), // gray hint text
-                          prefixIcon: Icon(Icons.search, color: Colors.grey),
-                          filled: true,
-                        ),
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 38),
 
+                  // Search Bar
+                  // GestureDetector(
+                  //   onTap: () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(
+                  //         builder: (context) => const SearchScreen(),
+                  //       ),
+                  //     );
+                  //   },
+                  //   child: const AbsorbPointer(
+                  //     child: TextField(
+                  //       readOnly: true,
+                  //       style: TextStyle(color: Colors.black87),
+                  //       decoration: InputDecoration(
+                  //         fillColor: Colors.white,
+                  //         border: OutlineInputBorder(
+                  //           borderSide: BorderSide.none,
+                  //           borderRadius: BorderRadius.all(
+                  //             Radius.circular(12),
+                  //           ),
+                  //         ),
+                  //         hintText: "Search course...",
+                  //         hintStyle: TextStyle(color: Colors.grey),
+                  //         prefixIcon: Icon(Icons.search, color: Colors.grey),
+                  //         filled: true,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(height: 8),
                 ],
               ),
@@ -214,7 +262,7 @@ class HomeDashboard extends StatelessWidget {
                     ),
                   ),
 
-                  // Enhanced Grid Menu
+                  // Grid Menu
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),

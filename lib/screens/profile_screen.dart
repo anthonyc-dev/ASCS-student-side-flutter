@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:my_app/models/student.dart';
+import 'package:my_app/services/student_profile_service.dart';
 import 'package:my_app/widgets/menu_anchor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,8 +14,10 @@ class StudentProfileScreen extends StatefulWidget {
 }
 
 class _StudentProfileScreenState extends State<StudentProfileScreen> {
-  String name = '';
-  String schoolId = '';
+  final StudentProfileService _profileService = StudentProfileService();
+  Student? _student;
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -22,11 +26,198 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      name = prefs.getString('firstName') ?? 'Unknown Student';
-      schoolId = prefs.getString('userSchoolId') ?? 'N/A';
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final schoolId = prefs.getString('userSchoolId');
+
+      if (schoolId == null || schoolId.isEmpty) {
+        throw Exception('School ID not found. Please login again.');
+      }
+
+      final student = await _profileService.getStudentBySchoolId(schoolId);
+
+      setState(() {
+        _student = student;
+        _isLoading = false;
+      });
+    } catch (error) {
+      setState(() {
+        _errorMessage = error.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showEditProfileDialog(BuildContext context, Color themeColor) {
+    if (_student == null) return;
+
+    final firstNameController = TextEditingController(text: _student!.firstName);
+    final lastNameController = TextEditingController(text: _student!.lastName);
+    final emailController = TextEditingController(text: _student!.email);
+    final phoneController = TextEditingController(text: _student!.phoneNumber);
+    final programController = TextEditingController(text: _student!.program);
+    final yearLevelController = TextEditingController(text: _student!.yearLevel);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Edit Profile',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: firstNameController,
+                decoration: const InputDecoration(
+                  labelText: 'First Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: lastNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Last Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: programController,
+                decoration: const InputDecoration(
+                  labelText: 'Program',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: yearLevelController,
+                decoration: const InputDecoration(
+                  labelText: 'Year Level',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await _updateProfile(
+                firstNameController.text,
+                lastNameController.text,
+                emailController.text,
+                phoneController.text,
+                programController.text,
+                yearLevelController.text,
+              );
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: themeColor,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Save',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateProfile(
+    String firstName,
+    String lastName,
+    String email,
+    String phoneNumber,
+    String program,
+    String yearLevel,
+  ) async {
+    if (_student == null) return;
+
+    try {
+      final updates = {
+        'firstName': firstName,
+        'lastName': lastName,
+        'email': email,
+        'phoneNumber': phoneNumber,
+        'program': program,
+        'yearLevel': yearLevel,
+      };
+
+      final updatedStudent = await _profileService.updateStudent(
+        _student!.id!,
+        updates,
+      );
+
+      setState(() {
+        _student = updatedStudent;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Profile updated successfully',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.toString().replaceAll('Exception: ', ''),
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -78,7 +269,55 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error',
+                          style: GoogleFonts.poppins(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: _loadUserData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: themeColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 30),
@@ -108,7 +347,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             const SizedBox(height: 18),
             // Student Name & School ID
             Text(
-              name,
+              _student?.fullName ?? 'Unknown Student',
               style: GoogleFonts.poppins(
                 fontSize: 22,
                 fontWeight: FontWeight.w500,
@@ -118,7 +357,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              'BS Computer Science',
+              _student?.program ?? 'No Program',
               style: GoogleFonts.poppins(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -134,7 +373,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'School ID: $schoolId',
+                'School ID: ${_student?.schoolId ?? 'N/A'}',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   color: Colors.grey[700],
@@ -146,9 +385,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             const SizedBox(height: 18),
             // Edit Profile Button
             ElevatedButton.icon(
-              onPressed: () {
-                // Navigate to edit profile page
-              },
+              onPressed: _student != null ? () => _showEditProfileDialog(context, themeColor) : null,
               icon: const Icon(Icons.edit, size: 20, color: Colors.white70),
               label: Text(
                 'Edit Profile',
@@ -202,11 +439,11 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                       ),
                       const SizedBox(height: 14),
                       _buildDetailRow(
-                          'Course', 'BS Computer Science', themeColor),
-                      _buildDetailRow('Year', '3rd Year', themeColor),
+                          'Course', _student?.program ?? 'N/A', themeColor),
+                      _buildDetailRow('Year', _student?.yearLevel ?? 'N/A', themeColor),
                       _buildDetailRow(
-                          'Email', 'janedoe@university.edu', themeColor),
-                      _buildDetailRow('Phone', '+63 912 345 6789', themeColor),
+                          'Email', _student?.email ?? 'N/A', themeColor),
+                      _buildDetailRow('Phone', _student?.phoneNumber ?? 'N/A', themeColor),
                     ],
                   ),
                 ),
