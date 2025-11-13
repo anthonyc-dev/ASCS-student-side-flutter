@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/models/student_requirement.dart';
+import 'package:my_app/models/clearance.dart';
 import 'package:my_app/screens/inst_clearance.dart';
 import 'package:my_app/screens/qr_code.dart';
 import 'package:my_app/services/student_requirement_service.dart';
+import 'package:my_app/services/clearance_service.dart';
 import 'package:my_app/widgets/clearance/build_info_row.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
 class DeptClearance extends StatefulWidget {
   const DeptClearance({super.key});
@@ -19,7 +22,9 @@ class _DeptClearanceState extends State<DeptClearance>
   late TabController _tabController;
   final StudentRequirementService _requirementService =
       StudentRequirementService();
+  final ClearanceService _clearanceService = ClearanceService();
   List<StudentRequirement> _studentRequirements = [];
+  Clearance? _currentClearance;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -73,11 +78,15 @@ class _DeptClearanceState extends State<DeptClearance>
         return;
       }
 
+      // Fetch requirements and clearance in parallel
       final requirements =
           await _requirementService.getStudentRequirementsBySchoolId(schoolId);
+      final clearance = await _clearanceService.getCurrentClearance();
+
       if (!mounted) return;
       setState(() {
         _studentRequirements = requirements;
+        _currentClearance = clearance;
         _isLoading = false;
       });
     } catch (error) {
@@ -108,6 +117,112 @@ class _DeptClearanceState extends State<DeptClearance>
   // Refresh function
   Future<void> _refreshData() async {
     await _loadStudentRequirements();
+  }
+
+  // --- Check if should show status card ---
+  bool _shouldShowStatusCard() {
+    if (_currentClearance == null) return false;
+    final now = DateTime.now();
+    final deadline = _currentClearance!.effectiveDeadline;
+    return !_currentClearance!.isActive || now.isAfter(deadline);
+  }
+
+  // --- Build Clearance Status Card ---
+  Widget _buildClearanceStatusCard() {
+    if (_currentClearance == null) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final deadline = _currentClearance!.effectiveDeadline;
+    final hasEnded = now.isAfter(deadline);
+    final isStopped = !_currentClearance!.isActive;
+
+    String title;
+    String message;
+    IconData icon;
+    List<Color> gradientColors;
+
+    if (isStopped && hasEnded) {
+      title = "Clearance Stopped";
+      message = "Ended on ${DateFormat('MMM dd, yyyy').format(deadline)}";
+      icon = Icons.block_rounded;
+      gradientColors = [const Color(0xFF6B7280), const Color(0xFF4B5563)];
+    } else if (isStopped) {
+      title = "Clearance Stopped";
+      message = "This clearance has been deactivated";
+      icon = Icons.block_rounded;
+      gradientColors = [const Color(0xFF6B7280), const Color(0xFF4B5563)];
+    } else if (hasEnded) {
+      title = "Clearance Ended";
+      message = "Ended on ${DateFormat('MMM dd, yyyy').format(deadline)}";
+      icon = Icons.event_busy_rounded;
+      gradientColors = [const Color(0xFFEF4444), const Color(0xFFDC2626)];
+    } else {
+      title = "Clearance Status";
+      message = "Status unavailable";
+      icon = Icons.info_rounded;
+      gradientColors = [const Color(0xFF6B7280), const Color(0xFF4B5563)];
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: GoogleFonts.outfit(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -186,7 +301,12 @@ class _DeptClearanceState extends State<DeptClearance>
                       color: Colors.blue,
                     ),
                   )
-                : _errorMessage != null
+                : Column(
+                    children: [
+                      // Show status card if clearance ended or stopped
+                      if (_shouldShowStatusCard()) _buildClearanceStatusCard(),
+                      Expanded(
+                        child: _errorMessage != null
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
@@ -380,6 +500,9 @@ class _DeptClearanceState extends State<DeptClearance>
                               );
                             },
                           ),
+                      ),
+                    ],
+                  ),
           ),
 
           // Institutional Clearance Tab

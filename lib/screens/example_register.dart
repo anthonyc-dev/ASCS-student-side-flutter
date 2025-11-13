@@ -399,7 +399,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? Function(String?)? validator,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       validator: validator,
       isExpanded: true, // ✅ prevents horizontal overflow
       menuMaxHeight: 300, // ✅ prevents dropdown popup overflow

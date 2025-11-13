@@ -309,7 +309,11 @@ class _HomeDashboardState extends State<HomeDashboard> {
                   ),
                   const SizedBox(height: 16),
                   // Clearance Deadline Card
-                  if (_currentClearance != null) _buildDeadlineCard(),
+                  if (_currentClearance != null) ...[
+                    _shouldShowStatusCard()
+                        ? _buildClearanceStatusCard()
+                        : _buildDeadlineCard(),
+                  ],
                   const SizedBox(height: 25),
                   const Text(
                     "Quick Actions",
@@ -365,6 +369,111 @@ class _HomeDashboardState extends State<HomeDashboard> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // --- Check if should show status card instead of deadline ---
+  bool _shouldShowStatusCard() {
+    if (_currentClearance == null) return false;
+    final now = DateTime.now();
+    final deadline = _currentClearance!.effectiveDeadline;
+    // Show status card if clearance is not active or deadline has passed
+    return !_currentClearance!.isActive || now.isAfter(deadline);
+  }
+
+  // --- Clearance Status Card (Ended/Stopped) ---
+  Widget _buildClearanceStatusCard() {
+    final now = DateTime.now();
+    final deadline = _currentClearance!.effectiveDeadline;
+    final hasEnded = now.isAfter(deadline);
+    final isStopped = !_currentClearance!.isActive;
+
+    String title;
+    String message;
+    IconData icon;
+    List<Color> gradientColors;
+
+    if (isStopped && hasEnded) {
+      title = "Clearance Stopped";
+      message = "Ended on ${DateFormat('MMM dd, yyyy').format(deadline)}";
+      icon = Icons.block_rounded;
+      gradientColors = [const Color(0xFF6B7280), const Color(0xFF4B5563)];
+    } else if (isStopped) {
+      title = "Clearance Stopped";
+      message = "This clearance has been deactivated";
+      icon = Icons.block_rounded;
+      gradientColors = [const Color(0xFF6B7280), const Color(0xFF4B5563)];
+    } else if (hasEnded) {
+      title = "Clearance Ended";
+      message = "Ended on ${DateFormat('MMM dd, yyyy').format(deadline)}";
+      icon = Icons.event_busy_rounded;
+      gradientColors = [const Color(0xFFEF4444), const Color(0xFFDC2626)];
+    } else {
+      // Fallback (shouldn't reach here based on _shouldShowStatusCard logic)
+      title = "Clearance Status";
+      message = "Status unavailable";
+      icon = Icons.info_rounded;
+      gradientColors = [const Color(0xFF6B7280), const Color(0xFF4B5563)];
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
