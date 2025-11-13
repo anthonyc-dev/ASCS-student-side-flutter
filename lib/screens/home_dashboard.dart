@@ -35,6 +35,8 @@ class _HomeDashboardState extends State<HomeDashboard> {
   }
 
   Future<void> _loadUserData() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
     });
@@ -75,6 +77,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
           }
         }
 
+        if (!mounted) return;
         setState(() {
           _student = student;
           _currentClearance = clearance;
@@ -83,12 +86,14 @@ class _HomeDashboardState extends State<HomeDashboard> {
           _isLoading = false;
         });
       } else {
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
       }
     } catch (error) {
       // If API fails, continue with loading state false
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -421,7 +426,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormat('MMM dd, yyyy • hh:mm a').format(deadline),
+                  DateFormat('MMM dd, yyyy').format(deadline),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,

@@ -31,22 +31,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final List<String> _programs = [
-    'BS Computer Science',
-    'BS Information Technology',
-    'BS Information Systems',
-    'BS Software Engineering',
+    "Bachelor of Science in Hospitality Management",
+    "Electrical Engineering and Computer Science",
+    "Bachelor of Science in Electrical Engineering",
+    "Bachelor of Science in Criminology",
+    "Bachelor of Science in Social Work",
+    "Bachelor of Science in Accountancy",
+    "PARAMED",
+    "Bachelor of Science in Midwifery",
+    "Bachelor of Science in Medical Technology",
+    "Bachelor of Science in Nursing",
+    "Bachelor of Science in Business Administration",
+    "Bachelor of Elementary Education",
+    "Bachelor of Arts in Political Science",
+    "CEDCAS",
+    "Bachelor in Secondary Education Major in Mathematics",
+    "Bachelor in Secondary Education Major in Science",
+    "Bachelor in Secondary Education Major in English",
+    "All Departments",
   ];
 
   final List<String> _yearLevels = [
-    '1st Year',
-    '2nd Year',
-    '3rd Year',
-    '4th Year',
+    "1st Year",
+    "2nd Year",
+    "3rd Year",
+    "4th Year",
+    "5th Year",
+    "Old Student",
   ];
 
   void _signUp() async {
     if (!_formKey.currentState!.validate()) {
-      // Form validation failed
       showSnackBar(context, "Please fix the errors in the form.");
       return;
     }
@@ -58,12 +73,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     setState(() => _isLoading = true);
 
-    // Show Cupertino loading dialog
     showCupertinoDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const CupertinoAlertDialog(
-        title: Text("Logging In"),
+        title: Text("Creating Account"),
         content: Padding(
           padding: EdgeInsets.only(top: 12),
           child: CupertinoActivityIndicator(radius: 14),
@@ -72,8 +86,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     try {
-      Authentication auth = Authentication();
-      String result = await auth.signUp(
+      final auth = Authentication();
+      final result = await auth.signUp(
         context: context,
         schoolId: _schoolIdController.text.trim(),
         firstName: _firstNameController.text.trim(),
@@ -85,13 +99,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text.trim(),
       );
 
-      // ✅ Always close dialog safely
-      // if (!mounted) return;
-      // if (Navigator.canPop(context)) {
-      //   Navigator.of(context, rootNavigator: true).pop();
-      // }
-
       if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // Close dialog
       setState(() => _isLoading = false);
 
       if (result == "Success") {
@@ -101,22 +110,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/login', // Your home route
-          (route) => false, // Remove all previous routes
+          '/login',
+          (route) => false,
         );
       } else {
         showSnackBar(context, result);
-        setState(() => _isLoading = false);
       }
     } catch (error) {
-      // ✅ Handle unexpected exceptions
-      if (!mounted) return;
-      if (Navigator.canPop(context)) {
+      if (mounted && Navigator.canPop(context)) {
         Navigator.of(context, rootNavigator: true).pop();
       }
-
-      showSnackBar(context, "Unexpected error: $error");
-      setState(() => _isLoading = false);
+      if (mounted) showSnackBar(context, "Unexpected error: $error");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -156,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
           child: Form(
-            key: _formKey, // Assign form key
+            key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -170,7 +174,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // --- First & Last Name ---
                 Row(
                   children: [
                     Expanded(
@@ -178,12 +181,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _firstNameController,
                         label: "First Name",
                         icon: Icons.person_outline,
-                        validator: (val) {
-                          if (val == null || val.isEmpty) {
-                            return "Enter first name";
-                          }
-                          return null;
-                        },
+                        validator: (val) => val == null || val.isEmpty
+                            ? "Enter first name"
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -192,31 +192,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         controller: _lastNameController,
                         label: "Last Name",
                         icon: Icons.person_outline,
-                        validator: (val) {
-                          if (val == null || val.isEmpty) {
-                            return "Enter last name";
-                          }
-                          return null;
-                        },
+                        validator: (val) => val == null || val.isEmpty
+                            ? "Enter last name"
+                            : null,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
 
-                // --- Student ID ---
                 _buildTextFormField(
                   controller: _schoolIdController,
                   label: "Student ID",
                   icon: Icons.badge_outlined,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return "Enter student ID";
-                    return null;
-                  },
+                  validator: (val) =>
+                      val == null || val.isEmpty ? "Enter student ID" : null,
                 ),
                 const SizedBox(height: 16),
 
-                // --- Email ---
                 _buildTextFormField(
                   controller: _emailController,
                   label: "E-Mail",
@@ -232,7 +225,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // --- Phone Number ---
                 _buildTextFormField(
                   controller: _phoneController,
                   label: "Phone Number",
@@ -246,7 +238,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // --- Program Dropdown ---
+                // ✅ Fixed Dropdown
                 _buildDropdownFormField(
                   label: "Program",
                   icon: Icons.list_alt_outlined,
@@ -254,14 +246,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   items: _programs,
                   onChanged: (value) =>
                       setState(() => _selectedProgram = value),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return "Select program";
-                    return null;
-                  },
+                  validator: (val) =>
+                      val == null || val.isEmpty ? "Select program" : null,
                 ),
                 const SizedBox(height: 16),
 
-                // --- Year Level Dropdown ---
                 _buildDropdownFormField(
                   label: "Year Level",
                   icon: Icons.calendar_month_outlined,
@@ -269,14 +258,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   items: _yearLevels,
                   onChanged: (value) =>
                       setState(() => _selectedYearLevel = value),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return "Select year level";
-                    return null;
-                  },
+                  validator: (val) =>
+                      val == null || val.isEmpty ? "Select year level" : null,
                 ),
                 const SizedBox(height: 16),
 
-                // --- Password ---
                 _buildPasswordFormField(
                   controller: _passwordController,
                   label: "Password",
@@ -285,15 +271,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       setState(() => _obscurePassword = !_obscurePassword),
                   validator: (val) {
                     if (val == null || val.isEmpty) return "Enter password";
-                    if (val.length < 6) {
-                      return "Password must be at least 6 characters";
-                    }
+                    if (val.length < 6) return "Password too short";
                     return null;
                   },
                 ),
                 const SizedBox(height: 20),
 
-                // --- Confirm Password ---
                 _buildPasswordFormField(
                   controller: _cpasswordController,
                   label: "Confirm Password",
@@ -310,7 +293,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // --- Terms Checkbox ---
                 Row(
                   children: [
                     Checkbox(
@@ -351,7 +333,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // --- Sign Up Button ---
                 SizedBox(
                   width: double.infinity,
                   height: 55,
@@ -381,7 +362,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // --- TextFormField Builder ---
   Widget _buildTextFormField({
     required TextEditingController controller,
     required String label,
@@ -410,7 +390,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // --- DropdownFormField Builder ---
   Widget _buildDropdownFormField({
     required String label,
     required IconData icon,
@@ -420,8 +399,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String? Function(String?)? validator,
   }) {
     return DropdownButtonFormField<String>(
-      initialValue: value,
+      value: value,
       validator: validator,
+      isExpanded: true, // ✅ prevents horizontal overflow
+      menuMaxHeight: 300, // ✅ prevents dropdown popup overflow
       decoration: InputDecoration(
         contentPadding:
             const EdgeInsets.symmetric(vertical: 15, horizontal: 12),
@@ -441,14 +422,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       items: items.map((item) {
         return DropdownMenuItem(
           value: item,
-          child: Text(item),
+          child: Text(
+            item,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         );
       }).toList(),
       onChanged: onChanged,
     );
   }
 
-  // --- PasswordFormField Builder ---
   Widget _buildPasswordFormField({
     required TextEditingController controller,
     required String label,

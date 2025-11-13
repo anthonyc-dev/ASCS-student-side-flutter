@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:my_app/services/authentication.dart';
 import 'package:my_app/widgets/snackbar.dart';
 
@@ -13,7 +12,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _rememberMe = false;
+  // bool _rememberMe = false;
   bool _obscurePassword = true;
   bool _isLoading = false;
   final _formKey = GlobalKey<FormState>();
@@ -77,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/home', // Your home route
+          '/home',
           (route) => false, // Remove all previous routes
         );
       } else {
@@ -220,20 +219,20 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Checkbox(
-                        activeColor: primaryBlue,
-                        value: _rememberMe,
-                        onChanged: (val) =>
-                            setState(() => _rememberMe = val ?? false),
-                      ),
-                      Text(
-                        "Remember Me",
-                        style: GoogleFonts.poppins(fontSize: 14),
-                      ),
-                    ],
-                  ),
+                  // Row(
+                  //   children: [
+                  //     Checkbox(
+                  //       activeColor: primaryBlue,
+                  //       value: _rememberMe,
+                  //       onChanged: (val) =>
+                  //           setState(() => _rememberMe = val ?? false),
+                  //     ),
+                  //     Text(
+                  //       "Remember Me",
+                  //       style: GoogleFonts.poppins(fontSize: 14),
+                  //     ),
+                  //   ],
+                  // ),
                   TextButton(
                     onPressed: () {},
                     child: Text(
@@ -298,34 +297,34 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 30),
 
-              Center(
-                child: Column(
-                  children: [
-                    Text(
-                      "Or Sign in With",
-                      style: GoogleFonts.poppins(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _socialButton(
-                          icon: FontAwesomeIcons.google,
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: 20),
-                        _socialButton(
-                          icon: FontAwesomeIcons.facebook,
-                          onTap: () {},
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              // Center(
+              //   child: Column(
+              //     children: [
+              //       Text(
+              //         "Or Sign in With",
+              //         style: GoogleFonts.poppins(
+              //           color: Colors.grey[600],
+              //           fontSize: 14,
+              //         ),
+              //       ),
+              //       const SizedBox(height: 16),
+              //       Row(
+              //         mainAxisAlignment: MainAxisAlignment.center,
+              //         children: [
+              //           _socialButton(
+              //             icon: FontAwesomeIcons.google,
+              //             onTap: () {},
+              //           ),
+              //           const SizedBox(width: 20),
+              //           _socialButton(
+              //             icon: FontAwesomeIcons.facebook,
+              //             onTap: () {},
+              //           ),
+              //         ],
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
         ),
@@ -333,18 +332,18 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _socialButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 55,
-        width: 55,
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Icon(icon, size: 26, color: Colors.black),
-      ),
-    );
-  }
+  // Widget _socialButton({required IconData icon, required VoidCallback onTap}) {
+  //   return GestureDetector(
+  //     onTap: onTap,
+  //     child: Container(
+  //       height: 55,
+  //       width: 55,
+  //       decoration: BoxDecoration(
+  //         color: Colors.grey[100],
+  //         borderRadius: BorderRadius.circular(16),
+  //       ),
+  //       child: Icon(icon, size: 26, color: Colors.black),
+  //     ),
+  //   );
+  // }
 }

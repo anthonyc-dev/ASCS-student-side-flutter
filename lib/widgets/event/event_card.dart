@@ -21,8 +21,13 @@ class _EventCardState extends State<EventCard> {
     final String title = widget.event['title'] ?? 'No Title';
     final String description = widget.event['description'] ?? '';
     final String date = widget.event['date'] ?? '';
+    final String? time = widget.event['time'];
     final String venue = widget.event['venue'] ?? '';
     final Color iconColor = widget.event['iconColor'] ?? Colors.blue;
+
+    // Combine date and time for display
+    final String dateTimeDisplay =
+        time != null && time.isNotEmpty ? '$date at $time' : date;
 
     return Container(
       width: double.infinity,
@@ -69,11 +74,13 @@ class _EventCardState extends State<EventCard> {
                 Icon(Icons.calendar_today,
                     size: 18, color: iconColor.withValues(alpha: 0.8)),
                 const SizedBox(width: 6),
-                Text(
-                  date,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Colors.blueGrey,
+                Flexible(
+                  child: Text(
+                    dateTimeDisplay,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      color: Colors.blueGrey,
+                    ),
                   ),
                 ),
               ],

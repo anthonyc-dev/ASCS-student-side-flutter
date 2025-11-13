@@ -90,9 +90,86 @@ class Authentication {
         if (!context.mounted) return '';
         Navigator.pushReplacementNamed(context, "/login");
         return data["message"] ?? "Registration successful!";
+      } else if (response.statusCode == 404) {
+        var errorData = jsonDecode(response.body);
+        return errorData["error"] ?? "Student ID not Found";
       } else {
         var errorData = jsonDecode(response.body);
         return errorData["error"] ?? "Failed to sign up. Please try again.";
+      }
+    } on http.ClientException {
+      return "Network error. Please check your internet connection.";
+    } on FormatException {
+      return "Invalid response format from the server.";
+    } catch (error) {
+      return "Unexpected error: ${error.toString()}";
+    }
+  }
+
+  //logout
+  Future<String> logout({
+    required BuildContext context,
+  }) async {
+    try {
+      var url = Uri.parse("$apiUrl/student/logoutStudent");
+
+      var response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+      );
+
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+
+        // Clear user info from local storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+
+        if (!context.mounted) return '';
+
+        // Navigate to login screen
+        Navigator.pushReplacementNamed(context, "/login");
+
+        return data["message"] ?? "Logout successful!";
+      } else {
+        var errorData = jsonDecode(response.body);
+        return errorData["error"] ?? "Failed to log out. Please try again.";
+      }
+    } on http.ClientException {
+      return "Network error. Please check your internet connection.";
+    } on FormatException {
+      return "Invalid response format from the server.";
+    } catch (error) {
+      return "Unexpected error: ${error.toString()}";
+    }
+  }
+
+  //change password
+  Future<String> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      var url = Uri.parse("$apiUrl/student/changeStudentPassword");
+
+      var response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "currentPassword": currentPassword,
+          "newPassword": newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        return data["message"] ?? "Password changed successfully!";
+      } else {
+        var errorData = jsonDecode(response.body);
+        return errorData["error"] ??
+            "Failed to change password. Please try again.";
       }
     } on http.ClientException {
       return "Network error. Please check your internet connection.";

@@ -52,6 +52,7 @@ class _InstClearanceState extends State<InstClearance>
   }
 
   Future<void> _loadInstitutionalRequirements() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -62,6 +63,7 @@ class _InstClearanceState extends State<InstClearance>
       final schoolId = prefs.getString('userSchoolId') ?? 'N/A';
 
       if (schoolId == 'N/A') {
+        if (!mounted) return;
         setState(() {
           _errorMessage = 'School ID not found. Please log in again.';
           _isLoading = false;
@@ -71,13 +73,14 @@ class _InstClearanceState extends State<InstClearance>
 
       final requirements = await _requirementService
           .getStudentInstitutionalRequirementsByStudentId(schoolId);
-
+      if (!mounted) return;
       setState(() {
         _institutionalRequirements = requirements;
         _isLoading = false;
       });
     } catch (error) {
       setState(() {
+        if (!mounted) return;
         _errorMessage = error.toString();
         _isLoading = false;
       });
