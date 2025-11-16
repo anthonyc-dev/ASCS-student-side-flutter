@@ -53,6 +53,8 @@ dependencies:
   introduction_screen: ^4.0.0
   dio: ^5.9.0
   add_2_calendar: ^3.0.1
+  firebase_core: ^4.2.1
+  cloud_firestore: ^6.1.0
 
 dev_dependencies:
   flutter_test:

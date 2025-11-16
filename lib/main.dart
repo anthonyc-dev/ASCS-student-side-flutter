@@ -16,9 +16,17 @@ import 'package:my_app/screens/qr_code.dart';
 import 'package:my_app/screens/onboarding_screen.dart';
 import 'package:my_app/utils/screen_size.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   await dotenv.load(fileName: ".env");
 
 // onboarding remove if there have error

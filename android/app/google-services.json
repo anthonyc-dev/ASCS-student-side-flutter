@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "981562936510",
+    "firebase_url": "https://ascs-dd799-default-rtdb.firebaseio.com",
+    "project_id": "ascs-dd799",
+    "storage_bucket": "ascs-dd799.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:981562936510:android:6b0e0c490cac25fc27e2ef",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2JZmeCbEdREwemceRr4DIY8AwDQQyYg8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
