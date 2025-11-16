@@ -34,7 +34,8 @@ class StudentProfileService {
   }
 
   /// Updates student data by student ID
-  Future<Student> updateStudent(String studentId, Map<String, dynamic> updates) async {
+  Future<Student> updateStudent(
+      String studentId, Map<String, dynamic> updates) async {
     try {
       var url = Uri.parse("$apiUrl/student/updateStudent/$studentId");
 
