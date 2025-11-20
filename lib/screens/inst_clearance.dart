@@ -26,7 +26,8 @@ class _InstClearanceState extends State<InstClearance>
   bool _isLoading = false;
   String? _errorMessage;
 
-  Color getStatusColor(String status) {
+  Color getStatusColor(String? status) {
+    if (status == null) return Colors.grey;
     switch (status.toLowerCase()) {
       case 'signed':
         return Colors.green;
@@ -41,7 +42,8 @@ class _InstClearanceState extends State<InstClearance>
     }
   }
 
-  IconData getStatusIcon(String status) {
+  IconData getStatusIcon(String? status) {
+    if (status == null) return Icons.info;
     switch (status.toLowerCase()) {
       case 'signed':
         return Icons.check_circle;
@@ -377,8 +379,9 @@ class _InstClearanceState extends State<InstClearance>
                                               const SizedBox(width: 8),
                                               Text(
                                                 requirement
-                                                    .institutionalRequirement
-                                                    .institutionalName,
+                                                        .institutionalRequirement
+                                                        ?.institutionalName ??
+                                                    'N/A',
                                                 style: GoogleFonts.outfit(
                                                   fontSize: 18,
                                                   fontWeight: FontWeight.w600,
@@ -408,7 +411,8 @@ class _InstClearanceState extends State<InstClearance>
                                                 ),
                                                 const SizedBox(width: 4),
                                                 Text(
-                                                  requirement.status,
+                                                  requirement.status ??
+                                                      'Unknown',
                                                   style: GoogleFonts.outfit(
                                                     color: statusColor,
                                                     fontWeight: FontWeight.w500,
@@ -424,21 +428,24 @@ class _InstClearanceState extends State<InstClearance>
                                         icon: Icons.person,
                                         label: 'Instructor',
                                         value: requirement
-                                            .clearingOfficer.fullName,
+                                                .clearingOfficer?.fullName ??
+                                            'N/A',
                                       ),
                                       InfoRow(
                                         icon: Icons.assignment,
                                         label: 'Requirements',
                                         value: requirement
-                                            .institutionalRequirement
-                                            .requirementsString,
+                                                .institutionalRequirement
+                                                ?.requirementsString ??
+                                            'N/A',
                                       ),
                                       InfoRow(
                                         icon: Icons.file_copy,
                                         label: 'Description',
                                         value: requirement
-                                            .institutionalRequirement
-                                            .description,
+                                                .institutionalRequirement
+                                                ?.description ??
+                                            'No description',
                                       ),
                                     ],
                                   ),

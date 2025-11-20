@@ -67,10 +67,10 @@ class _HomeDashboardState extends State<HomeDashboard> {
           totalCount =
               courseRequirements.length + institutionalRequirements.length;
           signedCount = courseRequirements
-                  .where((req) => req.status.toLowerCase() == 'signed')
+                  .where((req) => req.status?.toLowerCase() == 'signed')
                   .length +
               institutionalRequirements
-                  .where((req) => req.status.toLowerCase() == 'signed')
+                  .where((req) => req.status?.toLowerCase() == 'signed')
                   .length;
         } catch (e) {
           if (kDebugMode) {

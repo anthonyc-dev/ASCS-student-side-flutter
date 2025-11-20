@@ -28,7 +28,8 @@ class _DeptClearanceState extends State<DeptClearance>
   bool _isLoading = false;
   String? _errorMessage;
 
-  Color getStatusColor(String status) {
+  Color getStatusColor(String? status) {
+    if (status == null) return Colors.grey;
     switch (status.toLowerCase()) {
       case 'signed':
         return Colors.green;
@@ -43,7 +44,8 @@ class _DeptClearanceState extends State<DeptClearance>
     }
   }
 
-  IconData getStatusIcon(String status) {
+  IconData getStatusIcon(String? status) {
+    if (status == null) return Icons.info;
     switch (status.toLowerCase()) {
       case 'signed':
         return Icons.check_circle;
@@ -307,199 +309,226 @@ class _DeptClearanceState extends State<DeptClearance>
                       if (_shouldShowStatusCard()) _buildClearanceStatusCard(),
                       Expanded(
                         child: _errorMessage != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.error_outline,
-                                size: 60,
-                                color: Colors.red,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Error loading requirements',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _errorMessage!,
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _loadStudentRequirements,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                ),
-                                child: Text(
-                                  'Retry',
-                                  style: GoogleFonts.outfit(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : _studentRequirements.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.assignment_outlined,
-                                  size: 80,
-                                  color: Colors.grey[400],
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'No requirements found',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(
-                              left: 16,
-                              right: 16,
-                              top: 16,
-                            ),
-                            itemCount: _studentRequirements.length,
-                            itemBuilder: (context, index) {
-                              final requirement = _studentRequirements[index];
-                              Color statusColor =
-                                  getStatusColor(requirement.status);
-                              IconData statusIcon =
-                                  getStatusIcon(requirement.status);
-
-                              return GestureDetector(
-                                onTap: () {
-                                  // Navigator.push(
-                                  //   context,
-                                  //   MaterialPageRoute(
-                                  //     builder: (context) =>
-                                  //         CourseDetailsScreen(requirement: requirement),
-                                  //   ),
-                                  // );
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.1),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        size: 60,
+                                        color: Colors.red,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        'Error loading requirements',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        _errorMessage!,
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton(
+                                        onPressed: _loadStudentRequirements,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue,
+                                        ),
+                                        child: Text(
+                                          'Retry',
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
                                     ],
                                   ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16),
+                                ),
+                              )
+                            : _studentRequirements.isEmpty
+                                ? Center(
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.class_,
-                                                    size: 20,
-                                                    color: Colors.blue),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  requirement.officerRequirement
-                                                      .courseCode,
-                                                  style: GoogleFonts.outfit(
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: Colors.grey[700]),
-                                                ),
-                                              ],
-                                            ),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 6,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: statusColor.withValues(
-                                                    alpha: 0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Icon(
-                                                    statusIcon,
-                                                    color: statusColor,
-                                                    size: 16,
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Text(
-                                                    requirement.status,
-                                                    style: GoogleFonts.outfit(
-                                                      color: statusColor,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
+                                        Icon(
+                                          Icons.assignment_outlined,
+                                          size: 80,
+                                          color: Colors.grey[400],
                                         ),
-                                        const SizedBox(height: 12),
-                                        InfoRow(
-                                          icon: Icons.person,
-                                          label: 'Instructor',
-                                          value: requirement
-                                              .clearingOfficer.fullName,
-                                        ),
-                                        InfoRow(
-                                          icon: Icons.assignment,
-                                          label: 'Requirements',
-                                          value: requirement.officerRequirement
-                                              .requirementsString,
-                                        ),
-                                        InfoRow(
-                                          icon: Icons.file_copy,
-                                          label: 'Description',
-                                          value: requirement
-                                              .officerRequirement.description,
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'No requirements found',
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.grey[600],
+                                          ),
                                         ),
                                       ],
                                     ),
+                                  )
+                                : ListView.builder(
+                                    padding: const EdgeInsets.only(
+                                      left: 16,
+                                      right: 16,
+                                      top: 16,
+                                    ),
+                                    itemCount: _studentRequirements.length,
+                                    itemBuilder: (context, index) {
+                                      final requirement =
+                                          _studentRequirements[index];
+                                      Color statusColor =
+                                          getStatusColor(requirement.status);
+                                      IconData statusIcon =
+                                          getStatusIcon(requirement.status);
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          // Navigator.push(
+                                          //   context,
+                                          //   MaterialPageRoute(
+                                          //     builder: (context) =>
+                                          //         CourseDetailsScreen(requirement: requirement),
+                                          //   ),
+                                          // );
+                                        },
+                                        child: Container(
+                                          margin:
+                                              const EdgeInsets.only(bottom: 16),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black
+                                                    .withValues(alpha: 0.1),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(16),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        const Icon(Icons.class_,
+                                                            size: 20,
+                                                            color: Colors.blue),
+                                                        const SizedBox(
+                                                            width: 8),
+                                                        Text(
+                                                          requirement
+                                                                  .officerRequirement
+                                                                  ?.courseCode ??
+                                                              'N/A',
+                                                          style: GoogleFonts
+                                                              .outfit(
+                                                                  fontSize: 18,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  color: Colors
+                                                                          .grey[
+                                                                      700]),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 6,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: statusColor
+                                                            .withValues(
+                                                                alpha: 0.1),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(20),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Icon(
+                                                            statusIcon,
+                                                            color: statusColor,
+                                                            size: 16,
+                                                          ),
+                                                          const SizedBox(
+                                                              width: 4),
+                                                          Text(
+                                                            requirement
+                                                                    .status ??
+                                                                'Unknown',
+                                                            style: GoogleFonts
+                                                                .outfit(
+                                                              color:
+                                                                  statusColor,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 12),
+                                                InfoRow(
+                                                  icon: Icons.person,
+                                                  label: 'Instructor',
+                                                  value: requirement
+                                                          .clearingOfficer
+                                                          ?.fullName ??
+                                                      'N/A',
+                                                ),
+                                                InfoRow(
+                                                  icon: Icons.assignment,
+                                                  label: 'Requirements',
+                                                  value: requirement
+                                                          .officerRequirement
+                                                          ?.requirementsString ??
+                                                      'N/A',
+                                                ),
+                                                InfoRow(
+                                                  icon: Icons.file_copy,
+                                                  label: 'Description',
+                                                  value: requirement
+                                                          .officerRequirement
+                                                          ?.description ??
+                                                      'No description',
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                              );
-                            },
-                          ),
                       ),
                     ],
                   ),
