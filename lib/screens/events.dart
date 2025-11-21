@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/models/event.dart';
 import 'package:my_app/services/event_service.dart';
 import 'package:my_app/widgets/event/event_card.dart';
-import 'package:my_app/widgets/menu_anchor.dart';
 
 class EventsPage extends StatefulWidget {
   const EventsPage({super.key});
@@ -68,31 +67,31 @@ class _EventsPageState extends State<EventsPage> {
           ),
         ),
         backgroundColor: Colors.blue,
-        actions: [
-          MenuAnchorWidget(
-            onProfile: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Share'),
-                  content: const Text('Share button clicked!'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('OK'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            onSettings: () {
-              if (kDebugMode) print("Settings clicked");
-            },
-            onNotification: () {
-              if (kDebugMode) print("Notification clicked");
-            },
-          ),
-        ],
+        // actions: [
+        //   MenuAnchorWidget(
+        //     onProfile: () {
+        //       showDialog(
+        //         context: context,
+        //         builder: (context) => AlertDialog(
+        //           title: const Text('Share'),
+        //           content: const Text('Share button clicked!'),
+        //           actions: [
+        //             TextButton(
+        //               onPressed: () => Navigator.of(context).pop(),
+        //               child: const Text('OK'),
+        //             ),
+        //           ],
+        //         ),
+        //       );
+        //     },
+        //     onSettings: () {
+        //       if (kDebugMode) print("Settings clicked");
+        //     },
+        //     onNotification: () {
+        //       if (kDebugMode) print("Notification clicked");
+        //     },
+        //   ),
+        // ],
       ),
       body: _isLoading
           ? const Center(

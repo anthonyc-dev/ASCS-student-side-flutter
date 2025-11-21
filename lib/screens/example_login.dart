@@ -233,16 +233,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   //     ),
                   //   ],
                   // ),
-                  TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      "Forgot Password?",
-                      style: GoogleFonts.poppins(
-                        color: primaryBlue,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
+                  // TextButton(
+                  //   onPressed: () {},
+                  //   child: Text(
+                  //     "Forgot Password?",
+                  //     style: GoogleFonts.poppins(
+                  //       color: primaryBlue,
+                  //       fontSize: 14,
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
               const SizedBox(height: 20),

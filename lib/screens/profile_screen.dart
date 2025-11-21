@@ -1,10 +1,11 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:my_app/models/student.dart';
 import 'package:my_app/services/authentication.dart';
 import 'package:my_app/services/student_profile_service.dart';
-import 'package:my_app/widgets/menu_anchor.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StudentProfileScreen extends StatefulWidget {
@@ -17,10 +18,13 @@ class StudentProfileScreen extends StatefulWidget {
 class _StudentProfileScreenState extends State<StudentProfileScreen> {
   final StudentProfileService _profileService = StudentProfileService();
   final Authentication _authService = Authentication();
+  final ImagePicker _imagePicker = ImagePicker();
   Student? _student;
   bool _isLoading = true;
   bool _isLoggingOut = false;
+  bool _isUpdatingProfile = false;
   String? _errorMessage;
+  File? _selectedImage;
 
   @override
   void initState() {
@@ -143,31 +147,198 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () async {
-              await _updateProfile(
-                firstNameController.text,
-                lastNameController.text,
-                emailController.text,
-                phoneController.text,
-                programController.text,
-                yearLevelController.text,
-              );
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            },
+            onPressed: _isUpdatingProfile
+                ? null
+                : () async {
+                    await _updateProfile(
+                      firstNameController.text,
+                      lastNameController.text,
+                      emailController.text,
+                      phoneController.text,
+                      programController.text,
+                      yearLevelController.text,
+                    );
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: themeColor,
               foregroundColor: Colors.white,
             ),
+            child: _isUpdatingProfile
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Text(
+                    'Save',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+
+        // Show dialog to confirm upload
+        _showImageUploadDialog();
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to pick image: ${error.toString()}',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImageUploadDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Upload Profile Picture',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                _selectedImage!,
+                height: 200,
+                width: 200,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Do you want to upload this image?',
+              style: GoogleFonts.poppins(fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _selectedImage = null;
+              });
+              Navigator.of(context).pop();
+            },
             child: Text(
-              'Save',
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _uploadProfileImage();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0A84FF),
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Upload',
               style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _uploadProfileImage() async {
+    if (_student == null || _selectedImage == null) return;
+
+    if (kDebugMode) {
+      print('_student variables $_student');
+      print(_student!.schoolId);
+    }
+
+    setState(() {
+      _isUpdatingProfile = true;
+    });
+
+    try {
+      // Use separate upload method with current student data
+      final updatedStudent = await _profileService.uploadProfileImage(
+        _student!.schoolId,
+        _selectedImage!,
+        _student!, // Pass current student data
+      );
+
+      if (kDebugMode) {
+        print('update student $updatedStudent');
+      }
+
+      if (mounted) {
+        setState(() {
+          _student = updatedStudent;
+          _selectedImage = null;
+          _isUpdatingProfile = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Profile picture updated successfully',
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _isUpdatingProfile = false;
+          _selectedImage = null;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.toString().replaceAll('Exception: ', ''),
+              style: GoogleFonts.poppins(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _updateProfile(
@@ -180,26 +351,57 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   ) async {
     if (_student == null) return;
 
-    try {
-      final updates = {
-        'firstName': firstName,
-        'lastName': lastName,
-        'email': email,
-        'phoneNumber': phoneNumber,
-        'program': program,
-        'yearLevel': yearLevel,
-      };
+    setState(() {
+      _isUpdatingProfile = true;
+    });
 
+    try {
+      // Only include non-empty fields
+      final updates = <String, dynamic>{};
+
+      if (firstName.trim().isNotEmpty) updates['firstName'] = firstName.trim();
+      if (lastName.trim().isNotEmpty) updates['lastName'] = lastName.trim();
+      if (email.trim().isNotEmpty) updates['email'] = email.trim();
+      if (phoneNumber.trim().isNotEmpty) {
+        updates['phoneNumber'] = phoneNumber.trim();
+      }
+      if (program.trim().isNotEmpty) {
+        updates['program'] = program.trim();
+      }
+      if (yearLevel.trim().isNotEmpty) {
+        updates['yearLevel'] = yearLevel.trim();
+      }
+
+      if (updates.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _isUpdatingProfile = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'No changes to update',
+                style: GoogleFonts.poppins(),
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Use updateStudent with database ID to update all fields including program/yearLevel
       final updatedStudent = await _profileService.updateStudent(
         _student!.id!,
         updates,
       );
 
-      setState(() {
-        _student = updatedStudent;
-      });
-
       if (mounted) {
+        setState(() {
+          _student = updatedStudent;
+          _isUpdatingProfile = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -212,6 +414,10 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       }
     } catch (error) {
       if (mounted) {
+        setState(() {
+          _isUpdatingProfile = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -546,38 +752,38 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           ),
         ),
         backgroundColor: Colors.blue,
-        actions: [
-          MenuAnchorWidget(
-            onProfile: () {
-              // Navigator.pushNamed(context, '/profile');
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Share'),
-                  content: const Text('Share button clicked!'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('OK'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            onSettings: () {
-              // Navigator.pushNamed(context, '/settings');
-              if (kDebugMode) {
-                print("Settings clicked");
-              }
-            },
-            onNotification: () {
-              // Navigator.pushNamed(context, '/notif');
-              if (kDebugMode) {
-                print("Notification clicked");
-              }
-            },
-          ),
-        ],
+        // actions: [
+        //   MenuAnchorWidget(
+        //     onProfile: () {
+        //       // Navigator.pushNamed(context, '/profile');
+        //       showDialog(
+        //         context: context,
+        //         builder: (context) => AlertDialog(
+        //           title: const Text('Share'),
+        //           content: const Text('Share button clicked!'),
+        //           actions: [
+        //             TextButton(
+        //               onPressed: () => Navigator.of(context).pop(),
+        //               child: const Text('OK'),
+        //             ),
+        //           ],
+        //         ),
+        //       );
+        //     },
+        //     onSettings: () {
+        //       // Navigator.pushNamed(context, '/settings');
+        //       if (kDebugMode) {
+        //         print("Settings clicked");
+        //       }
+        //     },
+        //     onNotification: () {
+        //       // Navigator.pushNamed(context, '/notif');
+        //       if (kDebugMode) {
+        //         print("Notification clicked");
+        //       }
+        //     },
+        //   ),
+        // ],
       ),
       body: _isLoading
           ? const Center(
@@ -632,27 +838,91 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     children: [
                       const SizedBox(height: 30),
                       // Profile Picture with border and shadow
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: themeColor.withValues(alpha: 0.25),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
+                      Stack(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: themeColor.withValues(alpha: 0.25),
+                                  blurRadius: 18,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: themeColor,
+                                width: 3,
+                              ),
                             ),
-                          ],
-                          border: Border.all(
-                            color: themeColor,
-                            width: 3,
+                            child: CircleAvatar(
+                              radius: 60,
+                              backgroundColor: Colors.grey[300],
+                              backgroundImage:
+                                  (_student?.profileImage != null &&
+                                          _student!.profileImage!.isNotEmpty &&
+                                          _student!.profileImage!
+                                              .startsWith('http'))
+                                      ? NetworkImage(_student!.profileImage!)
+                                      : null,
+                              child: _isUpdatingProfile
+                                  ? Container(
+                                      decoration: BoxDecoration(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.5),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    )
+                                  : (_student?.profileImage == null ||
+                                          _student!.profileImage!.isEmpty ||
+                                          !_student!.profileImage!
+                                              .startsWith('http'))
+                                      ? Icon(
+                                          Icons.person,
+                                          size: 60,
+                                          color: Colors.grey[600],
+                                        )
+                                      : null,
+                            ),
                           ),
-                        ),
-                        child: const CircleAvatar(
-                          radius: 60,
-                          backgroundImage: NetworkImage(
-                            'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: _isUpdatingProfile ? null : _pickImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: themeColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 18),
                       // Student Name & School ID

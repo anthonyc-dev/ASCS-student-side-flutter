@@ -7,6 +7,7 @@ class Student {
   final String phoneNumber;
   final String program;
   final String yearLevel;
+  final String? profileImage;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -19,6 +20,7 @@ class Student {
     required this.phoneNumber,
     required this.program,
     required this.yearLevel,
+    this.profileImage,
     this.createdAt,
     this.updatedAt,
   });
@@ -33,6 +35,7 @@ class Student {
       phoneNumber: json['phoneNumber'] ?? '',
       program: json['program'] ?? '',
       yearLevel: json['yearLevel'] ?? '',
+      profileImage: json['profileImage'],
       createdAt:
           json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
       updatedAt:
