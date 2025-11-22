@@ -6,7 +6,21 @@ import 'package:http/http.dart' as http;
 import 'package:my_app/models/student.dart';
 
 class StudentProfileService {
+  // FORCE USE LOCAL IP FOR TESTING - Hardcoded to bypass .env caching issue
+  // String apiUrl = "http://10.145.190.211:3000";
+
+  // Temporarily disabled .env reading - will fix .env loading issue later
   String apiUrl = dotenv.env['API_URL'] ?? "http://localhost:3000";
+
+  StudentProfileService() {
+    // Debug: Print the API URL being used
+    if (kDebugMode) {
+      print('🌐 StudentProfileService initialized');
+      print('🌐 HARDCODED API_URL: $apiUrl');
+      print('🌐 .env API_URL value: ${dotenv.env['API_URL']}');
+      print('🌐 All .env keys: ${dotenv.env.keys.toList()}');
+    }
+  }
 
   /// Fetches student data by school ID
   Future<Student> getStudentBySchoolId(String schoolId) async {
@@ -103,7 +117,7 @@ class StudentProfileService {
     try {
       final cleanSchoolId = schoolId.trim();
       var url =
-          Uri.parse("$apiUrl/student/updateStudentProfileImage/$cleanSchoolId");
+          Uri.parse("$apiUrl/student/updateStudentProfileImage/$schoolId");
 
       if (kDebugMode) {
         print('==========================================');
@@ -111,47 +125,46 @@ class StudentProfileService {
         print('uploadProfileImage - schoolId: $cleanSchoolId');
         print('uploadProfileImage - URL: $url');
         print('uploadProfileImage - File path: ${imageFile.path}');
-        print('uploadProfileImage - File exists: ${await imageFile.exists()}');
-        print(
-            'uploadProfileImage - File size: ${await imageFile.length()} bytes');
-        print('==========================================');
       }
 
       // Verify file exists
       if (!await imageFile.exists()) {
-        throw Exception('Image file does not exist');
+        throw Exception('Image file does not exist at path: ${imageFile.path}');
       }
 
-      // Get file size and create stream
-      final fileLength = await imageFile.length();
-      final fileStream = imageFile.openRead();
+      // Read file as bytes for more reliable upload
+      final fileBytes = await imageFile.readAsBytes();
       final fileName = imageFile.path.split(Platform.pathSeparator).last;
 
       if (kDebugMode) {
-        print('uploadProfileImage - File size: $fileLength bytes');
+        print('uploadProfileImage - File size: ${fileBytes.length} bytes');
         print('uploadProfileImage - File name: $fileName');
       }
 
       // Create multipart request with PUT method
       var request = http.MultipartRequest('PUT', url);
 
-      // Add headers - multipart/form-data boundary is automatically set by http package
+      // Add headers
       request.headers.addAll({
         'Accept': 'application/json',
+        // Don't manually set Content-Type - let http package handle it
       });
 
-      // Create multipart file using stream (more reliable than fromPath)
-      var multipartFile = http.MultipartFile(
+      // Create multipart file from bytes (more reliable than stream)
+      var multipartFile = http.MultipartFile.fromBytes(
         'profileImage', // Field name must match multer.single("profileImage")
-        fileStream,
-        fileLength,
+        fileBytes,
         filename: fileName,
       );
       request.files.add(multipartFile);
 
       if (kDebugMode) {
-        print('uploadProfileImage - File field name: profileImage');
+        print('uploadProfileImage - Multipart file details:');
+        print('  - Field name: profileImage');
+        print('  - Filename: $fileName');
+        print('  - Size: ${fileBytes.length} bytes');
         print('uploadProfileImage - Request method: PUT');
+        print('uploadProfileImage - Request headers: ${request.headers}');
         print('uploadProfileImage - Sending request...');
       }
 
@@ -161,6 +174,7 @@ class StudentProfileService {
       if (kDebugMode) {
         print('==========================================');
         print('uploadProfileImage - Response status: ${response.statusCode}');
+        print('uploadProfileImage - Response headers: ${response.headers}');
         print('uploadProfileImage - Response body: ${response.body}');
         print('==========================================');
       }
@@ -184,6 +198,10 @@ class StudentProfileService {
           String errorMsg = errorData['message'] ?? 'Invalid image provided';
           if (kDebugMode) {
             print('uploadProfileImage - 400 Error: $errorMsg');
+            if (errorData.containsKey('receivedHeaders')) {
+              print(
+                  'uploadProfileImage - Received headers: ${errorData['receivedHeaders']}');
+            }
           }
           throw Exception(errorMsg);
         } catch (e) {
@@ -204,10 +222,10 @@ class StudentProfileService {
           if (kDebugMode) {
             print('uploadProfileImage - Backend returned HTML error page');
             print(
-                'uploadProfileImage - This usually means the endpoint is missing multer middleware');
+                'uploadProfileImage - This usually means body-parser is consuming the request before multer');
           }
           throw Exception(
-              'Backend configuration error. The server endpoint may be missing file upload middleware (multer). Please check your backend route configuration.');
+              'Backend configuration error. The server may have a body-parser middleware conflict. Check that body-parser is not applied before multer routes.');
         }
 
         // Try to parse JSON error
@@ -224,7 +242,8 @@ class StudentProfileService {
           throw Exception(errorMsg);
         } catch (e) {
           if (e.toString().contains('Exception:')) rethrow;
-          throw Exception('Server error while uploading image.');
+          throw Exception(
+              'Server error while uploading image: ${response.body}');
         }
       } else {
         throw Exception(
@@ -234,8 +253,11 @@ class StudentProfileService {
       if (kDebugMode) print('uploadProfileImage - Network error: $e');
       throw Exception('Network error. Please check your internet connection.');
     } on SocketException catch (e) {
-      if (kDebugMode) print('uploadProfileImage - Socket error: $e');
-      throw Exception('Cannot connect to server. Is the server running?');
+      if (kDebugMode) {
+        print('uploadProfileImage - Socket error: $e');
+        print('uploadProfileImage - Is the backend server running at $apiUrl?');
+      }
+      throw Exception('Cannot connect to server at $apiUrl. Is it running?');
     } catch (error) {
       if (kDebugMode) print('uploadProfileImage - Unexpected error: $error');
       if (error.toString().contains('Exception:')) {

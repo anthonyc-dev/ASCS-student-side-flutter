@@ -26,6 +26,7 @@ class _EventsPageState extends State<EventsPage> {
 
   Future<void> _loadEvents() async {
     try {
+      if (!mounted) return;
       setState(() {
         _isLoading = true;
         _errorMessage = null;
@@ -33,11 +34,13 @@ class _EventsPageState extends State<EventsPage> {
 
       final events = await _eventService.getAllEvents();
 
+      if (!mounted) return; // <-- check if still in widget tree
       setState(() {
         _events = events;
         _isLoading = false;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.toString();
         _isLoading = false;
@@ -48,7 +51,7 @@ class _EventsPageState extends State<EventsPage> {
     }
   }
 
-  // Refresh function
+// same for _refreshData
   Future<void> _refreshData() async {
     await _loadEvents();
   }
@@ -58,6 +61,9 @@ class _EventsPageState extends State<EventsPage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+        ),
         title: Text(
           'Events',
           style: GoogleFonts.outfit(
@@ -66,7 +72,19 @@ class _EventsPageState extends State<EventsPage> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0A84FF),
+                Color(0xFF0066CC),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         // actions: [
         //   MenuAnchorWidget(
         //     onProfile: () {

@@ -4,6 +4,7 @@ import 'package:my_app/models/student_requirement.dart';
 import 'package:my_app/models/clearance.dart';
 import 'package:my_app/services/student_requirement_service.dart';
 import 'package:my_app/services/clearance_service.dart';
+import 'package:my_app/services/socket_service.dart';
 import 'package:my_app/widgets/clearance/build_info_row.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -21,10 +22,12 @@ class _InstClearanceState extends State<InstClearance>
   final StudentRequirementService _requirementService =
       StudentRequirementService();
   final ClearanceService _clearanceService = ClearanceService();
+  final SocketService _socketService = SocketService();
   List<StudentInstitutionalRequirement> _institutionalRequirements = [];
   Clearance? _currentClearance;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _currentSchoolId;
 
   Color getStatusColor(String? status) {
     if (status == null) return Colors.grey;
@@ -78,6 +81,9 @@ class _InstClearanceState extends State<InstClearance>
         return;
       }
 
+      // Store school ID for socket event filtering
+      _currentSchoolId = schoolId;
+
       // Fetch requirements and clearance in parallel
       final requirements = await _requirementService
           .getStudentInstitutionalRequirementsByStudentId(schoolId);
@@ -98,6 +104,178 @@ class _InstClearanceState extends State<InstClearance>
     }
   }
 
+  // ========== SOCKET EVENT HANDLERS ==========
+
+  // Handle institutional requirement created events
+  void _handleRequirementCreated(dynamic data) {
+    if (!mounted || _currentSchoolId == null) return;
+
+    // ignore: avoid_print
+    print('📥 Processing institutional:requirement:created event: $data');
+
+    try {
+      // Silently refresh to include the new requirement
+      _silentRefresh();
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing requirement creation event: $e');
+    }
+  }
+
+  // Handle institutional requirement updated events
+  void _handleRequirementUpdated(dynamic data) {
+    if (!mounted || _currentSchoolId == null) return;
+
+    // ignore: avoid_print
+    print('📥 Processing institutional:studentRequirementUpdated event: $data');
+
+    try {
+      if (data is! Map) {
+        // ignore: avoid_print
+        print('⚠️ Invalid data format for requirement update');
+        return;
+      }
+
+      final studentId = data['studentId'] as String?;
+
+      // Check if this update is for the current student
+      if (studentId != _currentSchoolId) {
+        // ignore: avoid_print
+        print('ℹ️ Update is for different student, ignoring');
+        return;
+      }
+
+      // ignore: avoid_print
+      print('✅ Requirement updated for current student - updating display');
+
+      // Silently refresh to reflect the status change
+      _silentRefresh();
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing requirement update event: $e');
+      _silentRefresh();
+    }
+  }
+
+  // Handle institutional requirement deleted events
+  void _handleRequirementDeleted(dynamic data) {
+    if (!mounted || _currentSchoolId == null) return;
+
+    // ignore: avoid_print
+    print('📥 Processing institutional:requirement:deleted event: $data');
+
+    try {
+      if (data is! Map) {
+        // ignore: avoid_print
+        print('⚠️ Invalid data format for requirement deletion');
+        return;
+      }
+
+      final studentId = data['studentId'] as String?;
+
+      // Check if this deletion affects the current student
+      if (studentId != _currentSchoolId) {
+        // ignore: avoid_print
+        print('ℹ️ Deletion is for different student, ignoring');
+        return;
+      }
+
+      // ignore: avoid_print
+      print('✅ Requirement deleted for current student - updating display');
+
+      // Silently refresh to remove the deleted requirement
+      _silentRefresh();
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing requirement deletion event: $e');
+      _silentRefresh();
+    }
+  }
+
+  // Setup Socket.IO listeners
+  void _setupSocketListeners() {
+    // ignore: avoid_print
+    print('🔌 Setting up institutional socket listeners...');
+
+    // Listen for requirement creation events
+    _socketService.onInstitutionalRequirementCreated(_handleRequirementCreated);
+
+    // Listen for requirement status update events
+    _socketService.onInstitutionalRequirementUpdated(_handleRequirementUpdated);
+
+    // Listen for requirement deletion events
+    _socketService.onInstitutionalRequirementDeleted(_handleRequirementDeleted);
+
+    // Direct listeners as backup (for debugging)
+    if (_socketService.socket != null) {
+      _socketService.socket!.on('institutional:requirement:created', (data) {
+        // ignore: avoid_print
+        print(
+            '🆕 [DIRECT LISTENER] institutional:requirement:created received: $data');
+        _handleRequirementCreated(data);
+      });
+
+      _socketService.socket!.on('institutional:studentRequirementUpdated',
+          (data) {
+        // ignore: avoid_print
+        print(
+            '🔄 [DIRECT LISTENER] institutional:studentRequirementUpdated received: $data');
+        _handleRequirementUpdated(data);
+      });
+
+      _socketService.socket!.on('institutional:requirement:deleted', (data) {
+        // ignore: avoid_print
+        print(
+            '🗑️ [DIRECT LISTENER] institutional:requirement:deleted received: $data');
+        _handleRequirementDeleted(data);
+      });
+    }
+
+// ignore: avoid_print
+    print('🔌 Institutional socket listeners setup complete');
+  }
+
+  // Cleanup Socket.IO listeners
+  void _cleanupSocketListeners() {
+    _socketService.off('institutional:requirement:created');
+    _socketService.off('institutional:studentRequirementUpdated');
+    _socketService.off('institutional:requirement:deleted');
+
+    // ignore: avoid_print
+    print('🔇 Institutional socket listeners cleaned up');
+  }
+
+  // Silent refresh without showing loading indicator
+  Future<void> _silentRefresh() async {
+    if (!mounted || _currentSchoolId == null) return;
+
+// ignore: avoid_print
+    print('🔄 Starting silent refresh...');
+
+    try {
+      final requirements = await _requirementService
+          .getStudentInstitutionalRequirementsByStudentId(_currentSchoolId!);
+      final clearance = await _clearanceService.getCurrentClearance();
+
+      if (!mounted) return;
+
+      setState(() {
+        _institutionalRequirements = requirements;
+        _currentClearance = clearance;
+        _errorMessage = null;
+      });
+
+// ignore: avoid_print
+      print(
+          '🔄 Silent refresh completed - ${requirements.length} requirements loaded');
+    } catch (error) {
+      // ignore: avoid_print
+      print('⚠️ Silent refresh failed: $error');
+      // Don't update error state during silent refresh
+      // Just log the error and keep existing data
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -106,11 +284,18 @@ class _InstClearanceState extends State<InstClearance>
       setState(() {});
     });
     _loadInstitutionalRequirements();
+
+    // Setup real-time Socket.IO connection
+    _setupSocketListeners();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+
+    // Cleanup Socket.IO listeners
+    _cleanupSocketListeners();
+
     super.dispose();
   }
 

@@ -112,7 +112,14 @@ class _HomeDashboardState extends State<HomeDashboard> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.blue,
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF0A84FF),
+                    Color(0xFF0066CC),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(15),
                   bottomRight: Radius.circular(15),
@@ -418,12 +425,26 @@ class _HomeDashboardState extends State<HomeDashboard> {
                         color: const Color(0xFFF59E0B),
                         onTap: () => Navigator.pushNamed(context, '/event'),
                       ),
-                      _buildModernCard(
-                        title: "Notifications",
-                        subtitle: "3 New",
-                        icon: Icons.notifications_rounded,
-                        color: const Color(0xFF8B5CF6),
-                        onTap: () => Navigator.pushNamed(context, '/notif'),
+                      // Notifications Card with Real-time Count
+                      StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('notifications')
+                            .orderBy('createdAt', descending: true)
+                            .snapshots(includeMetadataChanges: false),
+                        builder: (context, snapshot) {
+                          final notificationCount =
+                              snapshot.hasData ? snapshot.data!.docs.length : 0;
+
+                          return _buildModernCard(
+                            title: "Notifications",
+                            subtitle: notificationCount > 0
+                                ? "$notificationCount New"
+                                : "No New",
+                            icon: Icons.notifications_rounded,
+                            color: const Color(0xFF8B5CF6),
+                            onTap: () => Navigator.pushNamed(context, '/notif'),
+                          );
+                        },
                       ),
                     ],
                   ),

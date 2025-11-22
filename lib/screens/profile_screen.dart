@@ -33,6 +33,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -48,11 +49,13 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
       final student = await _profileService.getStudentBySchoolId(schoolId);
 
+      if (!mounted) return;
       setState(() {
         _student = student;
         _isLoading = false;
       });
     } catch (error) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.toString().replaceAll('Exception: ', '');
         _isLoading = false;
@@ -743,6 +746,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FA),
       appBar: AppBar(
+        iconTheme: const IconThemeData(
+          color: Colors.white, // <-- changes the color of the back button
+        ),
         title: Text(
           'Student Profile',
           style: GoogleFonts.poppins(
@@ -751,7 +757,19 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0A84FF),
+                Color(0xFF0066CC),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         // actions: [
         //   MenuAnchorWidget(
         //     onProfile: () {

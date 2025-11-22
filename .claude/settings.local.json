@@ -14,7 +14,12 @@
       "Bash(flutter run:*)",
       "Read(//c/Users/Hp/Desktop/Developer Files/Personal Project/Online Clearance/Mobile-App-Flutter -user/**)",
       "Bash(timeout /t 60)",
-      "Bash(./gradlew:*)"
+      "Bash(./gradlew:*)",
+      "Bash(ipconfig:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(dir:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

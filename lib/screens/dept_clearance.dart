@@ -6,6 +6,7 @@ import 'package:my_app/screens/inst_clearance.dart';
 import 'package:my_app/screens/qr_code.dart';
 import 'package:my_app/services/student_requirement_service.dart';
 import 'package:my_app/services/clearance_service.dart';
+import 'package:my_app/services/socket_service.dart';
 import 'package:my_app/widgets/clearance/build_info_row.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -23,10 +24,12 @@ class _DeptClearanceState extends State<DeptClearance>
   final StudentRequirementService _requirementService =
       StudentRequirementService();
   final ClearanceService _clearanceService = ClearanceService();
+  final SocketService _socketService = SocketService();
   List<StudentRequirement> _studentRequirements = [];
   Clearance? _currentClearance;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _currentSchoolId;
 
   Color getStatusColor(String? status) {
     if (status == null) return Colors.grey;
@@ -80,6 +83,9 @@ class _DeptClearanceState extends State<DeptClearance>
         return;
       }
 
+      // Store school ID for real-time updates
+      _currentSchoolId = schoolId;
+
       // Fetch requirements and clearance in parallel
       final requirements =
           await _requirementService.getStudentRequirementsBySchoolId(schoolId);
@@ -100,6 +106,167 @@ class _DeptClearanceState extends State<DeptClearance>
     }
   }
 
+  // Handle real-time requirement creation from Socket.IO
+  void _handleRequirementCreated(dynamic data) {
+    if (!mounted) return;
+    // ignore: avoid_print
+    print('📥 Processing requirement:created event: $data');
+
+    try {
+      // Backend emits either {count: N} or {count: N, requirements: [...], requirementDetails: {...}}
+      int newRequirementsCount = 0;
+
+      if (data is Map) {
+        // Check if this is a createMany result with count
+        if (data.containsKey('count')) {
+          newRequirementsCount = data['count'] as int;
+        }
+
+        // If backend sends full data with requirements array
+        if (data.containsKey('requirements') && data['requirements'] is List) {
+          final requirements = data['requirements'] as List;
+          // Filter for current student if studentId is available
+          if (_currentSchoolId != null) {
+            final relevantReqs = requirements.where((item) {
+              return item['studentId'] == _currentSchoolId;
+            }).toList();
+            newRequirementsCount = relevantReqs.length;
+          }
+        }
+      } else if (data is List) {
+        // If backend sends array of student requirements directly
+        if (_currentSchoolId != null) {
+          final relevantReqs = data.where((item) {
+            return item['studentId'] == _currentSchoolId;
+          }).toList();
+          newRequirementsCount = relevantReqs.length;
+        }
+      }
+
+      // Refresh if there are new requirements
+      if (newRequirementsCount > 0 || data != null) {
+        // ignore: avoid_print
+        print('✅ New requirement(s) detected - refreshing data');
+
+        // Auto-refresh the requirements list to show new data (silent - no loading spinner)
+        _silentRefresh();
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing requirement:created event: $e');
+      // Refresh anyway to be safe (silent refresh)
+      _silentRefresh();
+    }
+  }
+
+  // Handle real-time requirement status updates from Socket.IO
+  void _handleRequirementUpdated(dynamic data) {
+    if (!mounted || _currentSchoolId == null) return;
+    // ignore: avoid_print
+    print('📥 Processing studentRequirementUpdated event: $data');
+
+    try {
+      if (data is! Map) {
+        // ignore: avoid_print
+        print('⚠️ Invalid data format for requirement update');
+        return;
+      }
+
+      final studentId = data['studentId'] as String?;
+      final status = data['status'] as String?;
+
+      // Check if this update is for the current student
+      if (studentId != _currentSchoolId) {
+        // ignore: avoid_print
+        print('ℹ️ Update is for different student, ignoring');
+        return;
+      }
+      // ignore: avoid_print
+      print('✅ Requirement status updated for current student: $status');
+
+      // Silently refresh to get the updated data
+      _silentRefresh();
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing requirement update event: $e');
+      // Refresh anyway to be safe
+      _silentRefresh();
+    }
+  }
+
+  // Handle real-time requirement deletion from Socket.IO
+  void _handleRequirementDeleted(dynamic data) {
+    if (!mounted || _currentSchoolId == null) return;
+    // ignore: avoid_print
+    print('📥 Processing requirement:deleted event: $data');
+
+    try {
+      if (data is! Map) {
+        // ignore: avoid_print
+        print('⚠️ Invalid data format for requirement deletion');
+        return;
+      }
+
+      final studentId = data['studentId'] as String?;
+      final requirementId = data['requirementId'] as String?;
+
+      // Check if this deletion is for the current student
+      if (studentId != _currentSchoolId) {
+        // ignore: avoid_print
+        print('ℹ️ Deletion is for different student, ignoring');
+        return;
+      }
+      // ignore: avoid_print
+      print(
+          '✅ Requirement deleted for current student: $requirementId - updating display');
+
+      // Silently refresh to remove the deleted requirement from the list
+      // No notification - just update the display in real-time
+      _silentRefresh();
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing requirement deletion event: $e');
+      // Refresh anyway to be safe
+      _silentRefresh();
+    }
+  }
+
+  // Setup Socket.IO listeners
+  void _setupSocketListeners() {
+    // Connect to socket server
+    _socketService.connect();
+
+    // Listen for requirement creation events
+    _socketService.onRequirementCreated(_handleRequirementCreated);
+
+    // Listen for requirement status update events
+    _socketService.onRequirementUpdated(_handleRequirementUpdated);
+
+    // Listen for requirement deletion events
+    _socketService.onRequirementDeleted(_handleRequirementDeleted);
+
+    // Direct listener as backup (for debugging)
+    if (_socketService.socket != null) {
+      _socketService.socket!.on('requirement:deleted', (data) {
+        // ignore: avoid_print
+        print('🗑️ [DIRECT LISTENER] requirement:deleted received: $data');
+        _handleRequirementDeleted(data);
+      });
+    }
+    // ignore: avoid_print
+    print('🔌 Socket listeners setup complete');
+  }
+
+  // Cleanup Socket.IO listeners
+  void _cleanupSocketListeners() {
+    _socketService.off('requirement:created');
+    _socketService.off('studentRequirementUpdated');
+    _socketService.off('requirement:deleted');
+
+    // ignore: avoid_print
+    print('🔇 Socket listeners cleaned up');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -108,17 +275,55 @@ class _DeptClearanceState extends State<DeptClearance>
       setState(() {});
     });
     _loadStudentRequirements();
+
+    // Setup real-time Socket.IO connection
+    _setupSocketListeners();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+
+    // Cleanup Socket.IO listeners
+    _cleanupSocketListeners();
+
     super.dispose();
   }
 
-  // Refresh function
+  // Refresh function (with loading indicator for manual refresh)
   Future<void> _refreshData() async {
     await _loadStudentRequirements();
+  }
+
+  // Silent background refresh (no loading indicator - for real-time updates)
+  Future<void> _silentRefresh() async {
+    if (!mounted) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final schoolId = prefs.getString('userSchoolId') ?? 'N/A';
+
+      if (schoolId == 'N/A') return;
+
+      // Fetch requirements and clearance in parallel
+      final requirements =
+          await _requirementService.getStudentRequirementsBySchoolId(schoolId);
+      final clearance = await _clearanceService.getCurrentClearance();
+
+      if (!mounted) return;
+      setState(() {
+        _studentRequirements = requirements;
+        _currentClearance = clearance;
+        // Don't change _isLoading or _errorMessage - keep current UI state
+      });
+// ignore: avoid_print
+      print(
+          '🔄 Silent refresh completed - ${requirements.length} requirements loaded');
+    } catch (error) {
+      // ignore: avoid_print
+      print('⚠️ Silent refresh error: $error');
+      // Don't show error to user - it's a background refresh
+    }
   }
 
   // --- Check if should show status card ---
@@ -227,13 +432,30 @@ class _DeptClearanceState extends State<DeptClearance>
     );
   }
 
+  bool showQrButton = true;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+        ),
         elevation: 0,
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF0A84FF),
+                Color(0xFF0066CC),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(
           'Clearance',
           style: GoogleFonts.outfit(
@@ -242,18 +464,22 @@ class _DeptClearanceState extends State<DeptClearance>
             color: Colors.white,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_2, size: 30),
-            color: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const QrCode()),
-              );
-            },
-          ),
-        ],
+        actions: showQrButton
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.qr_code_2, size: 30),
+                  color: Colors.white,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const QrCode(),
+                      ),
+                    );
+                  },
+                ),
+              ]
+            : [],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -295,7 +521,7 @@ class _DeptClearanceState extends State<DeptClearance>
           // Department Clearance Tab with pull-to-refresh
           RefreshIndicator(
             onRefresh: _refreshData,
-            color: Colors.white, // color of the spinner
+            color: Colors.white,
             backgroundColor: Colors.blue,
             child: _isLoading
                 ? const Center(
