@@ -6,6 +6,7 @@ import 'package:my_app/services/student_requirement_service.dart';
 import 'package:my_app/services/clearance_service.dart';
 import 'package:my_app/services/socket_service.dart';
 import 'package:my_app/widgets/clearance/build_info_row.dart';
+import 'package:my_app/widgets/show_modal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
@@ -192,6 +193,92 @@ class _InstClearanceState extends State<InstClearance>
     }
   }
 
+  // Handle all requirements cleared event
+  void _handleAllRequirementsCleared(dynamic data) {
+    if (!mounted || _currentSchoolId == null) return;
+    // ignore: avoid_print
+    print('📥 Processing requirements:allCleared event: $data');
+
+    try {
+      if (data is! Map) {
+        // ignore: avoid_print
+        print('⚠️ Invalid data format for requirements cleared');
+        return;
+      }
+
+      final studentId = data['studentId'] as String?;
+
+      // Check if this is for the current student
+      if (studentId != _currentSchoolId) {
+        // ignore: avoid_print
+        print('ℹ️ Clearance is for different student, ignoring');
+        return;
+      }
+
+      // ignore: avoid_print
+      print('✅ All requirements cleared for current student!');
+
+      // Show the requirements cleared modal
+      DialogUtil.showRequirementsClearedDialog(
+        context,
+        onViewQrCode: () {
+          // Navigate to QR Code screen
+          Navigator.pushNamed(context, '/qr-code');
+        },
+      );
+
+      // Silently refresh to update the UI with cleared status
+      _silentRefresh();
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing requirements cleared event: $e');
+    }
+  }
+
+  // Handle QR code generated event
+  void _handleQrGenerated(dynamic data) {
+    if (!mounted || _currentSchoolId == null) return;
+    // ignore: avoid_print
+    print('📥 Processing qr:generated event: $data');
+
+    try {
+      if (data is! Map) {
+        // ignore: avoid_print
+        print('⚠️ Invalid data format for QR generated');
+        return;
+      }
+
+      final studentId = data['studentId'] as String?;
+
+      // Check if this QR is for the current student
+      if (studentId != _currentSchoolId) {
+        // ignore: avoid_print
+        print('ℹ️ QR generated for different student, ignoring');
+        return;
+      }
+
+      // ignore: avoid_print
+      print('✅ QR Code generated for current student!');
+
+      // Show snackbar notification
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('QR Code has been generated!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // Silently refresh to update the UI
+      _silentRefresh();
+    } catch (e) {
+      // ignore: avoid_print
+      print('⚠️ Error processing QR generated event: $e');
+    }
+  }
+
   // Setup Socket.IO listeners
   void _setupSocketListeners() {
     // ignore: avoid_print
@@ -205,6 +292,12 @@ class _InstClearanceState extends State<InstClearance>
 
     // Listen for requirement deletion events
     _socketService.onInstitutionalRequirementDeleted(_handleRequirementDeleted);
+
+    // Listen for all requirements cleared event
+    _socketService.onAllRequirementsCleared(_handleAllRequirementsCleared);
+
+    // Listen for QR code generation events
+    _socketService.onQrGenerated(_handleQrGenerated);
 
     // Direct listeners as backup (for debugging)
     if (_socketService.socket != null) {
@@ -240,6 +333,8 @@ class _InstClearanceState extends State<InstClearance>
     _socketService.off('institutional:requirement:created');
     _socketService.off('institutional:studentRequirementUpdated');
     _socketService.off('institutional:requirement:deleted');
+    _socketService.off('requirements:allCleared');
+    _socketService.off('qr:generated');
 
     // ignore: avoid_print
     print('🔇 Institutional socket listeners cleaned up');

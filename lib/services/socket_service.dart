@@ -190,6 +190,23 @@ class SocketService {
 
   // ========== QR CODE LISTENERS ==========
 
+  // Listen to all requirements cleared event
+  void onAllRequirementsCleared(Function(dynamic) callback) {
+    if (_socket == null) {
+      // ignore: avoid_print
+      print('⚠️ Socket not initialized. Call connect() first.');
+      return;
+    }
+
+    _socket!.on('requirements:allCleared', (data) {
+      // ignore: avoid_print
+      print('📨 Received requirements:allCleared event');
+      // ignore: avoid_print
+      print('📊 Data: $data');
+      callback(data);
+    });
+  }
+
   // Listen to QR code generation events
   void onQrGenerated(Function(dynamic) callback) {
     if (_socket == null) {

@@ -278,7 +278,7 @@ class _QrCodeState extends State<QrCode> {
         ),
         const SizedBox(height: 20),
 
-        // Expiry Date Section
+        // Clearance Deadline Section
         if (_permitData?['expiresAt'] != null)
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -291,7 +291,7 @@ class _QrCodeState extends State<QrCode> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Expires: ${DateTime.parse(_permitData!['expiresAt']).toLocal().toString().split('.')[0]}',
+                  'Clearance Deadline: ${DateTime.parse(_permitData!['expiresAt']).toLocal().toString().split(' ')[0]}',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
