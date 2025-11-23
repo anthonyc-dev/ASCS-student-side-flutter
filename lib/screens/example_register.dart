@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/widgets/snackbar.dart';
 import 'package:my_app/services/authentication.dart';
@@ -103,17 +104,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.of(context, rootNavigator: true).pop(); // Close dialog
       setState(() => _isLoading = false);
 
-      if (result == "Success") {
-        showSnackBar(context, "Account created successfully!");
+      // Check if registration was successful
+      if (result.contains("successful") ||
+          result.contains("Registration successful")) {
+        showSnackBar(context, result);
         _clearFields();
 
         if (!mounted) return;
+
+        // Navigate to login page
         Navigator.pushNamedAndRemoveUntil(
           context,
           '/login',
           (route) => false,
         );
       } else {
+        // Show error message
         showSnackBar(context, result);
       }
     } catch (error) {
@@ -139,6 +145,248 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _selectedYearLevel = null;
       _agreePolicy = false;
     });
+  }
+
+  void _showPrivacyPolicyModal() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 600),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Privacy Policy",
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0A84FF),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Automated Student Clearance System (ASCS)",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "The ASCS is designed to streamline the student clearance process, making it faster and more efficient for both students and institutional departments.",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Data Collection",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "We collect and process your personal information including:\n• Student ID and academic information\n• Contact details (email, phone number)\n• Clearance status and requirements\n• Profile information",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Data Usage",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Your information is used to:\n• Process clearance requests\n• Track clearance requirements\n• Communicate with relevant departments\n• Generate clearance certificates",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Data Security",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "We implement appropriate security measures to protect your personal information from unauthorized access, alteration, or disclosure.",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTermsOfUseModal() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxHeight: 600),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Terms of Use",
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0A84FF),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "About ASCS",
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "The Automated Student Clearance System (ASCS) is a comprehensive digital platform that facilitates the clearance process for students across all departments and institutional offices.",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "User Responsibilities",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "By using ASCS, you agree to:\n• Provide accurate and truthful information\n• Maintain the confidentiality of your account\n• Use the system only for legitimate clearance purposes\n• Comply with institutional policies and regulations\n• Submit required documents in a timely manner",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "System Features",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "• Real-time clearance status tracking\n• Digital document submission\n• Department and institutional clearance management\n• QR code generation for verified clearances\n• Automated notifications and updates",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Account Security",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "You are responsible for maintaining the security of your account credentials. Do not share your password with anyone. Report any unauthorized access immediately.",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Prohibited Activities",
+                          style: GoogleFonts.poppins(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "• Attempting to access another user's account\n• Submitting false or misleading information\n• Using the system for unauthorized purposes\n• Interfering with system operations",
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -315,7 +563,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               style: GoogleFonts.poppins(
                                 color: primaryBlue,
                                 fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
                               ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = _showPrivacyPolicyModal,
                             ),
                             const TextSpan(text: " and "),
                             TextSpan(
@@ -323,7 +574,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               style: GoogleFonts.poppins(
                                 color: primaryBlue,
                                 fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline,
                               ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = _showTermsOfUseModal,
                             ),
                           ],
                         ),
