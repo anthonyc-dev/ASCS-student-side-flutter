@@ -78,35 +78,13 @@ class CustomBottomNavigation extends StatelessWidget {
                 label: 'Events',
               ),
               NavigationDestination(
-                icon: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Colors.blue.shade200, width: 2), // normal border
-                  ),
-                  child: ClipOval(
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                selectedIcon: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                        color: Colors.blue, width: 2), // thicker when active
-                  ),
-                  child: ClipOval(
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                icon: _AnimatedNavIcon(
+                  icon: Icons.person_outline,
+                  selectedIcon: Icons.person,
+                  selected: selectedIndex == 3,
+                  color:
+                      selectedIndex == 3 ? selectedBlue : colorScheme.primary,
+                  selectedColor: selectedBlue,
                 ),
                 label: 'Profile',
               )

@@ -294,12 +294,60 @@ class _HomeDashboardState extends State<HomeDashboard> {
                                   offset: const Offset(0, 4),
                                 ),
                               ],
-                              image: const DecorationImage(
-                                image: NetworkImage(
-                                  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde',
-                                ),
-                                fit: BoxFit.cover,
-                              ),
+                            ),
+                            child: ClipOval(
+                              child: _isLoading
+                                  ? Container(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.2),
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Colors.white70,
+                                        size: 28,
+                                      ),
+                                    )
+                                  : (_student?.profileImage != null &&
+                                          _student!.profileImage!.isNotEmpty)
+                                      ? Image.network(
+                                          _student!.profileImage!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Container(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.2),
+                                              child: const Icon(
+                                                Icons.person,
+                                                color: Colors.white70,
+                                                size: 28,
+                                              ),
+                                            );
+                                          },
+                                          loadingBuilder: (context, child,
+                                              loadingProgress) {
+                                            if (loadingProgress == null) {
+                                              return child;
+                                            }
+                                            return Container(
+                                              color: Colors.white
+                                                  .withValues(alpha: 0.2),
+                                              child:
+                                                  const CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white70,
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.2),
+                                          child: const Icon(
+                                            Icons.person,
+                                            color: Colors.white70,
+                                            size: 28,
+                                          ),
+                                        ),
                             ),
                           ),
                         ],

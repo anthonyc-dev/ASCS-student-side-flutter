@@ -59,8 +59,11 @@ class _TestImageUploadScreenState extends State<TestImageUploadScreen> {
         final file = File(pickedFile.path);
         final fileSize = await file.length();
 
+        // ignore: avoid_print
         print('✅ Image picked successfully');
+        // ignore: avoid_print
         print('   Path: ${pickedFile.path}');
+        // ignore: avoid_print
         print('   Size: ${(fileSize / 1024).toStringAsFixed(2)} KB');
 
         setState(() {
@@ -76,6 +79,7 @@ class _TestImageUploadScreenState extends State<TestImageUploadScreen> {
         });
       }
     } catch (e) {
+      // ignore: avoid_print
       print('❌ Error picking image: $e');
       setState(() {
         _statusMessage = 'Error picking image: $e';
@@ -108,12 +112,19 @@ class _TestImageUploadScreenState extends State<TestImageUploadScreen> {
       _statusColor = Colors.blue;
     });
 
+    // ignore: avoid_print
     print('\n╔════════════════════════════════════════╗');
+    // ignore: avoid_print
     print('║     STARTING IMAGE UPLOAD TEST         ║');
+    // ignore: avoid_print
     print('╚════════════════════════════════════════╝');
+    // ignore: avoid_print
     print('School ID: $schoolId');
+    // ignore: avoid_print
     print('Image path: ${_selectedImage!.path}');
+    // ignore: avoid_print
     print('Image size: ${await _selectedImage!.length()} bytes');
+    // ignore: avoid_print
     print('API URL: ${_service.apiUrl}');
 
     try {
@@ -123,10 +134,15 @@ class _TestImageUploadScreenState extends State<TestImageUploadScreen> {
         _mockStudent!,
       );
 
+      // ignore: avoid_print
       print('\n╔════════════════════════════════════════╗');
+      // ignore: avoid_print
       print('║     ✅ UPLOAD SUCCESSFUL!              ║');
+      // ignore: avoid_print
       print('╚════════════════════════════════════════╝');
+      // ignore: avoid_print
       print('Updated student: ${updatedStudent.fullName}');
+      // ignore: avoid_print
       print('Profile image URL: ${updatedStudent.profileImage}');
 
       setState(() {
@@ -178,9 +194,13 @@ class _TestImageUploadScreenState extends State<TestImageUploadScreen> {
         );
       }
     } catch (e) {
+      // ignore: avoid_print
       print('\n╔════════════════════════════════════════╗');
+      // ignore: avoid_print
       print('║     ❌ UPLOAD FAILED!                  ║');
+      // ignore: avoid_print
       print('╚════════════════════════════════════════╝');
+      // ignore: avoid_print
       print('Error: $e');
 
       setState(() {
@@ -389,7 +409,7 @@ class _TestImageUploadScreenState extends State<TestImageUploadScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _statusColor.withOpacity(0.1),
+                  color: _statusColor.withValues(alpha: (0.5)),
                   border: Border.all(color: _statusColor),
                   borderRadius: BorderRadius.circular(8),
                 ),
