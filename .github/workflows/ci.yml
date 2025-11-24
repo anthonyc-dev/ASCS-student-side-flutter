@@ -41,5 +41,5 @@ jobs:
       # - name: Build web
       #   run: flutter build web
 
-      - name: Build APK
-        run: flutter build apk
+      # - name: Build APK
+      #   run: flutter build apk

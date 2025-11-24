@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/models/student_requirement.dart';
@@ -7,8 +8,10 @@ import 'package:my_app/screens/qr_code.dart';
 import 'package:my_app/services/student_requirement_service.dart';
 import 'package:my_app/services/clearance_service.dart';
 import 'package:my_app/services/socket_service.dart';
+import 'package:my_app/services/network_service.dart';
 import 'package:my_app/widgets/clearance/build_info_row.dart';
 import 'package:my_app/widgets/show_modal.dart';
+import 'package:my_app/widgets/offline_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
@@ -26,11 +29,13 @@ class _DeptClearanceState extends State<DeptClearance>
       StudentRequirementService();
   final ClearanceService _clearanceService = ClearanceService();
   final SocketService _socketService = SocketService();
+  final NetworkService _networkService = NetworkService();
   List<StudentRequirement> _studentRequirements = [];
   Clearance? _currentClearance;
   bool _isLoading = false;
   String? _errorMessage;
   String? _currentSchoolId;
+  bool _isOffline = false;
 
   Color getStatusColor(String? status) {
     if (status == null) return Colors.grey;
@@ -87,23 +92,51 @@ class _DeptClearanceState extends State<DeptClearance>
       // Store school ID for real-time updates
       _currentSchoolId = schoolId;
 
-      // Fetch requirements and clearance in parallel
+      // Fetch requirements (this handles offline automatically)
       final requirements =
           await _requirementService.getStudentRequirementsBySchoolId(schoolId);
-      final clearance = await _clearanceService.getCurrentClearance();
+
+      // Try to fetch clearance, but don't fail if it doesn't work (offline mode)
+      Clearance? clearance;
+      try {
+        clearance = await _clearanceService.getCurrentClearance();
+      } catch (e) {
+        // Clearance service failed (probably offline), but that's okay
+        // We can still show requirements from cache
+        if (kDebugMode) {
+          print('Could not fetch clearance: $e');
+        }
+      }
 
       if (!mounted) return;
       setState(() {
         _studentRequirements = requirements;
         _currentClearance = clearance;
         _isLoading = false;
+        // Only show error if we're online and have no data
+        if (_isOffline && requirements.isEmpty) {
+          _errorMessage = null; // Don't show error when offline with no cache
+        } else if (!_isOffline && requirements.isEmpty) {
+          _errorMessage = 'No requirements found.';
+        } else {
+          _errorMessage = null;
+        }
       });
     } catch (error) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage = error.toString();
-        _isLoading = false;
-      });
+      // Only show error if we're online
+      if (!_isOffline) {
+        setState(() {
+          _errorMessage = error.toString();
+          _isLoading = false;
+        });
+      } else {
+        // When offline, try to load from cache silently
+        setState(() {
+          _isLoading = false;
+          _errorMessage = null;
+        });
+      }
     }
   }
 
@@ -369,10 +402,38 @@ class _DeptClearanceState extends State<DeptClearance>
     _tabController.addListener(() {
       setState(() {});
     });
+
+    // Check connectivity and listen to changes
+    _checkConnectivity();
+    _networkService.connectionStream.listen((isOnline) {
+      if (mounted) {
+        setState(() {
+          _isOffline = !isOnline;
+        });
+        // Only setup socket listeners if online
+        if (isOnline) {
+          _setupSocketListeners();
+        } else {
+          _cleanupSocketListeners();
+        }
+      }
+    });
+
     _loadStudentRequirements();
 
-    // Setup real-time Socket.IO connection
-    _setupSocketListeners();
+    // Setup real-time Socket.IO connection only if online
+    if (!_isOffline) {
+      _setupSocketListeners();
+    }
+  }
+
+  Future<void> _checkConnectivity() async {
+    final isOnline = await _networkService.checkConnectivity();
+    if (mounted) {
+      setState(() {
+        _isOffline = !isOnline;
+      });
+    }
   }
 
   @override
@@ -400,10 +461,17 @@ class _DeptClearanceState extends State<DeptClearance>
 
       if (schoolId == 'N/A') return;
 
-      // Fetch requirements and clearance in parallel
+      // Fetch requirements (this handles offline automatically)
       final requirements =
           await _requirementService.getStudentRequirementsBySchoolId(schoolId);
-      final clearance = await _clearanceService.getCurrentClearance();
+
+      // Try to fetch clearance, but don't fail if it doesn't work (offline mode)
+      Clearance? clearance;
+      try {
+        clearance = await _clearanceService.getCurrentClearance();
+      } catch (e) {
+        // Clearance service failed (probably offline), but that's okay
+      }
 
       if (!mounted) return;
       setState(() {
@@ -610,256 +678,281 @@ class _DeptClearanceState extends State<DeptClearance>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          // Department Clearance Tab with pull-to-refresh
-          RefreshIndicator(
-            onRefresh: _refreshData,
-            color: Colors.white,
-            backgroundColor: Colors.blue,
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.blue,
-                    ),
-                  )
-                : Column(
-                    children: [
-                      // Show status card if clearance ended or stopped
-                      if (_shouldShowStatusCard()) _buildClearanceStatusCard(),
-                      Expanded(
-                        child: _errorMessage != null
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.error_outline,
-                                        size: 60,
-                                        color: Colors.red,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'Error loading requirements',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red,
+          OfflineIndicator(isOffline: _isOffline),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Department Clearance Tab with pull-to-refresh
+                RefreshIndicator(
+                  onRefresh: _refreshData,
+                  color: Colors.white,
+                  backgroundColor: Colors.blue,
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.blue,
+                          ),
+                        )
+                      : Column(
+                          children: [
+                            // Show status card if clearance ended or stopped
+                            if (_shouldShowStatusCard())
+                              _buildClearanceStatusCard(),
+                            Expanded(
+                              child: _errorMessage != null
+                                  ? Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.error_outline,
+                                              size: 60,
+                                              color: Colors.red,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'Error loading requirements',
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              _errorMessage!,
+                                              textAlign: TextAlign.center,
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            ElevatedButton(
+                                              onPressed:
+                                                  _loadStudentRequirements,
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.blue,
+                                              ),
+                                              child: Text(
+                                                'Retry',
+                                                style: GoogleFonts.outfit(
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        _errorMessage!,
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      ElevatedButton(
-                                        onPressed: _loadStudentRequirements,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.blue,
-                                        ),
-                                        child: Text(
-                                          'Retry',
-                                          style: GoogleFonts.outfit(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            : _studentRequirements.isEmpty
-                                ? Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.assignment_outlined,
-                                          size: 80,
-                                          color: Colors.grey[400],
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'No requirements found',
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.grey[600],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    padding: const EdgeInsets.only(
-                                      left: 16,
-                                      right: 16,
-                                      top: 16,
-                                    ),
-                                    itemCount: _studentRequirements.length,
-                                    itemBuilder: (context, index) {
-                                      final requirement =
-                                          _studentRequirements[index];
-                                      Color statusColor =
-                                          getStatusColor(requirement.status);
-                                      IconData statusIcon =
-                                          getStatusIcon(requirement.status);
-
-                                      return GestureDetector(
-                                        onTap: () {
-                                          // Navigator.push(
-                                          //   context,
-                                          //   MaterialPageRoute(
-                                          //     builder: (context) =>
-                                          //         CourseDetailsScreen(requirement: requirement),
-                                          //   ),
-                                          // );
-                                        },
-                                        child: Container(
-                                          margin:
-                                              const EdgeInsets.only(bottom: 16),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black
-                                                    .withValues(alpha: 0.1),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 4),
+                                    )
+                                  : _studentRequirements.isEmpty
+                                      ? Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.assignment_outlined,
+                                                size: 80,
+                                                color: Colors.grey[400],
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                'No requirements found',
+                                                style: GoogleFonts.outfit(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: Colors.grey[600],
+                                                ),
                                               ),
                                             ],
                                           ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(16),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        const Icon(Icons.class_,
-                                                            size: 20,
-                                                            color: Colors.blue),
-                                                        const SizedBox(
-                                                            width: 8),
-                                                        Text(
-                                                          requirement
-                                                                  .officerRequirement
-                                                                  ?.courseCode ??
-                                                              'N/A',
-                                                          style: GoogleFonts
-                                                              .outfit(
-                                                                  fontSize: 18,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  color: Colors
-                                                                          .grey[
-                                                                      700]),
-                                                        ),
-                                                      ],
+                                        )
+                                      : ListView.builder(
+                                          padding: const EdgeInsets.only(
+                                            left: 16,
+                                            right: 16,
+                                            top: 16,
+                                          ),
+                                          itemCount:
+                                              _studentRequirements.length,
+                                          itemBuilder: (context, index) {
+                                            final requirement =
+                                                _studentRequirements[index];
+                                            Color statusColor = getStatusColor(
+                                                requirement.status);
+                                            IconData statusIcon = getStatusIcon(
+                                                requirement.status);
+
+                                            return GestureDetector(
+                                              onTap: () {
+                                                // Navigator.push(
+                                                //   context,
+                                                //   MaterialPageRoute(
+                                                //     builder: (context) =>
+                                                //         CourseDetailsScreen(requirement: requirement),
+                                                //   ),
+                                                // );
+                                              },
+                                              child: Container(
+                                                margin: const EdgeInsets.only(
+                                                    bottom: 16),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                              alpha: 0.1),
+                                                      blurRadius: 10,
+                                                      offset:
+                                                          const Offset(0, 4),
                                                     ),
-                                                    Container(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: statusColor
-                                                            .withValues(
-                                                                alpha: 0.1),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(20),
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
+                                                  ],
+                                                ),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.all(16),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .spaceBetween,
                                                         children: [
-                                                          Icon(
-                                                            statusIcon,
-                                                            color: statusColor,
-                                                            size: 16,
+                                                          Row(
+                                                            children: [
+                                                              const Icon(
+                                                                  Icons.class_,
+                                                                  size: 20,
+                                                                  color: Colors
+                                                                      .blue),
+                                                              const SizedBox(
+                                                                  width: 8),
+                                                              Text(
+                                                                requirement
+                                                                        .officerRequirement
+                                                                        ?.courseCode ??
+                                                                    'N/A',
+                                                                style: GoogleFonts.outfit(
+                                                                    fontSize:
+                                                                        18,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w600,
+                                                                    color: Colors
+                                                                            .grey[
+                                                                        700]),
+                                                              ),
+                                                            ],
                                                           ),
-                                                          const SizedBox(
-                                                              width: 4),
-                                                          Text(
-                                                            requirement
-                                                                    .status ??
-                                                                'Unknown',
-                                                            style: GoogleFonts
-                                                                .outfit(
-                                                              color:
-                                                                  statusColor,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                              horizontal: 12,
+                                                              vertical: 6,
+                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: statusColor
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.1),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          20),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                Icon(
+                                                                  statusIcon,
+                                                                  color:
+                                                                      statusColor,
+                                                                  size: 16,
+                                                                ),
+                                                                const SizedBox(
+                                                                    width: 4),
+                                                                Text(
+                                                                  requirement
+                                                                          .status ??
+                                                                      'Unknown',
+                                                                  style:
+                                                                      GoogleFonts
+                                                                          .outfit(
+                                                                    color:
+                                                                        statusColor,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w500,
+                                                                  ),
+                                                                ),
+                                                              ],
                                                             ),
                                                           ),
                                                         ],
                                                       ),
-                                                    ),
-                                                  ],
+                                                      const SizedBox(
+                                                          height: 12),
+                                                      InfoRow(
+                                                        icon: Icons.person,
+                                                        label: 'Instructor',
+                                                        value: requirement
+                                                                .clearingOfficer
+                                                                ?.fullName ??
+                                                            'N/A',
+                                                      ),
+                                                      InfoRow(
+                                                        icon: Icons.assignment,
+                                                        label: 'Requirements',
+                                                        value: requirement
+                                                                .officerRequirement
+                                                                ?.requirementsString ??
+                                                            'N/A',
+                                                      ),
+                                                      InfoRow(
+                                                        icon: Icons.file_copy,
+                                                        label: 'Description',
+                                                        value: requirement
+                                                                .officerRequirement
+                                                                ?.description ??
+                                                            'No description',
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                                const SizedBox(height: 12),
-                                                InfoRow(
-                                                  icon: Icons.person,
-                                                  label: 'Instructor',
-                                                  value: requirement
-                                                          .clearingOfficer
-                                                          ?.fullName ??
-                                                      'N/A',
-                                                ),
-                                                InfoRow(
-                                                  icon: Icons.assignment,
-                                                  label: 'Requirements',
-                                                  value: requirement
-                                                          .officerRequirement
-                                                          ?.requirementsString ??
-                                                      'N/A',
-                                                ),
-                                                InfoRow(
-                                                  icon: Icons.file_copy,
-                                                  label: 'Description',
-                                                  value: requirement
-                                                          .officerRequirement
-                                                          ?.description ??
-                                                      'No description',
-                                                ),
-                                              ],
-                                            ),
-                                          ),
+                                              ),
+                                            );
+                                          },
                                         ),
-                                      );
-                                    },
-                                  ),
-                      ),
-                    ],
-                  ),
-          ),
+                            ),
+                          ],
+                        ),
+                ),
 
-          // Institutional Clearance Tab
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: InstClearance(),
+                // Institutional Clearance Tab
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: InstClearance(),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

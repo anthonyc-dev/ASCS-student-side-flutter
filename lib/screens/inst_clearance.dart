@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:my_app/models/student_requirement.dart';
@@ -5,6 +6,7 @@ import 'package:my_app/models/clearance.dart';
 import 'package:my_app/services/student_requirement_service.dart';
 import 'package:my_app/services/clearance_service.dart';
 import 'package:my_app/services/socket_service.dart';
+import 'package:my_app/services/network_service.dart';
 import 'package:my_app/widgets/clearance/build_info_row.dart';
 import 'package:my_app/widgets/show_modal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,11 +26,13 @@ class _InstClearanceState extends State<InstClearance>
       StudentRequirementService();
   final ClearanceService _clearanceService = ClearanceService();
   final SocketService _socketService = SocketService();
+  final NetworkService _networkService = NetworkService();
   List<StudentInstitutionalRequirement> _institutionalRequirements = [];
   Clearance? _currentClearance;
   bool _isLoading = false;
   String? _errorMessage;
   String? _currentSchoolId;
+  bool _isOffline = false;
 
   Color getStatusColor(String? status) {
     if (status == null) return Colors.grey;
@@ -85,23 +89,51 @@ class _InstClearanceState extends State<InstClearance>
       // Store school ID for socket event filtering
       _currentSchoolId = schoolId;
 
-      // Fetch requirements and clearance in parallel
+      // Fetch requirements (this handles offline automatically)
       final requirements = await _requirementService
           .getStudentInstitutionalRequirementsByStudentId(schoolId);
-      final clearance = await _clearanceService.getCurrentClearance();
+
+      // Try to fetch clearance, but don't fail if it doesn't work (offline mode)
+      Clearance? clearance;
+      try {
+        clearance = await _clearanceService.getCurrentClearance();
+      } catch (e) {
+        // Clearance service failed (probably offline), but that's okay
+        // We can still show requirements from cache
+        if (kDebugMode) {
+          print('Could not fetch clearance: $e');
+        }
+      }
 
       if (!mounted) return;
       setState(() {
         _institutionalRequirements = requirements;
         _currentClearance = clearance;
         _isLoading = false;
+        // Only show error if we're online and have no data
+        if (_isOffline && requirements.isEmpty) {
+          _errorMessage = null; // Don't show error when offline with no cache
+        } else if (!_isOffline && requirements.isEmpty) {
+          _errorMessage = 'No requirements found.';
+        } else {
+          _errorMessage = null;
+        }
       });
     } catch (error) {
-      setState(() {
-        if (!mounted) return;
-        _errorMessage = error.toString();
-        _isLoading = false;
-      });
+      if (!mounted) return;
+      // Only show error if we're online
+      if (!_isOffline) {
+        setState(() {
+          _errorMessage = error.toString();
+          _isLoading = false;
+        });
+      } else {
+        // When offline, try to load from cache silently
+        setState(() {
+          _isLoading = false;
+          _errorMessage = null;
+        });
+      }
     }
   }
 
@@ -348,9 +380,17 @@ class _InstClearanceState extends State<InstClearance>
     print('🔄 Starting silent refresh...');
 
     try {
+      // Fetch requirements (this handles offline automatically)
       final requirements = await _requirementService
           .getStudentInstitutionalRequirementsByStudentId(_currentSchoolId!);
-      final clearance = await _clearanceService.getCurrentClearance();
+
+      // Try to fetch clearance, but don't fail if it doesn't work (offline mode)
+      Clearance? clearance;
+      try {
+        clearance = await _clearanceService.getCurrentClearance();
+      } catch (e) {
+        // Clearance service failed (probably offline), but that's okay
+      }
 
       if (!mounted) return;
 
@@ -378,10 +418,38 @@ class _InstClearanceState extends State<InstClearance>
     _tabController.addListener(() {
       setState(() {});
     });
+
+    // Check connectivity and listen to changes
+    _checkConnectivity();
+    _networkService.connectionStream.listen((isOnline) {
+      if (mounted) {
+        setState(() {
+          _isOffline = !isOnline;
+        });
+        // Only setup socket listeners if online
+        if (isOnline) {
+          _setupSocketListeners();
+        } else {
+          _cleanupSocketListeners();
+        }
+      }
+    });
+
     _loadInstitutionalRequirements();
 
-    // Setup real-time Socket.IO connection
-    _setupSocketListeners();
+    // Setup real-time Socket.IO connection only if online
+    if (!_isOffline) {
+      _setupSocketListeners();
+    }
+  }
+
+  Future<void> _checkConnectivity() async {
+    final isOnline = await _networkService.checkConnectivity();
+    if (mounted) {
+      setState(() {
+        _isOffline = !isOnline;
+      });
+    }
   }
 
   @override

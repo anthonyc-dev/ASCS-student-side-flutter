@@ -33,6 +33,19 @@ class ClearingOfficer {
   }
 
   String get fullName => '${firstName ?? 'N/A'} ${lastName ?? ''}'.trim();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'schoolId': schoolId,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': email,
+      'phoneNumber': phoneNumber,
+      'role': role,
+      'profileImage': profileImage,
+    };
+  }
 }
 
 class OfficerRequirement {
@@ -79,6 +92,21 @@ class OfficerRequirement {
 
   String get requirementsString =>
       requirements.isEmpty ? 'N/A' : requirements.join(', ');
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'courseCode': courseCode,
+      'courseName': courseName,
+      'yearLevel': yearLevel,
+      'semester': semester,
+      'requirements': requirements,
+      'department': department,
+      'dueDate': dueDate,
+      'description': description,
+    };
+  }
 }
 
 class StudentRequirement {
@@ -122,6 +150,19 @@ class StudentRequirement {
           : null,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'studentId': studentId,
+      'coId': coId,
+      'requirementId': requirementId,
+      'status': status,
+      'signedBy': signedBy,
+      'officerRequirement': officerRequirement?.toJson(),
+      'clearingOfficer': clearingOfficer?.toJson(),
+    };
+  }
 }
 
 class InstitutionalRequirement {
@@ -162,6 +203,19 @@ class InstitutionalRequirement {
 
   String get requirementsString =>
       requirements.isEmpty ? 'N/A' : requirements.join(', ');
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'institutionalName': institutionalName,
+      'requirements': requirements,
+      'department': department,
+      'description': description,
+      'semester': semester,
+      'deadline': deadline,
+      'postedBy': postedBy,
+    };
+  }
 }
 
 class StudentInstitutionalRequirement {
@@ -204,5 +258,18 @@ class StudentInstitutionalRequirement {
             )
           : null,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'studentId': studentId,
+      'coId': coId,
+      'requirementId': requirementId,
+      'status': status,
+      'signedBy': signedBy,
+      'institutionalRequirement': institutionalRequirement?.toJson(),
+      'clearingOfficer': clearingOfficer?.toJson(),
+    };
   }
 }

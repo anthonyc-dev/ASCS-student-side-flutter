@@ -4,9 +4,12 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:my_app/widgets/show_modal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:my_app/services/offline_storage_service.dart';
+import 'package:my_app/services/network_service.dart';
 
 class Authentication {
   String apiUrl = dotenv.env['API_URL'] ?? "Default URL";
+  final NetworkService _networkService = NetworkService();
 
   //log in
   Future<String> login({
@@ -14,6 +17,33 @@ class Authentication {
     required String email,
     required String password,
   }) async {
+    // Check if offline
+    final isOnline = await _networkService.checkConnectivity();
+
+    if (!isOnline) {
+      // Try offline login - check if credentials match cached data
+      final cachedEmail = OfflineStorageService.getEmail();
+      final cachedSchoolId = OfflineStorageService.getSchoolId();
+
+      if (cachedEmail == email && OfflineStorageService.isLoggedInOffline()) {
+        // Restore SharedPreferences for compatibility
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+            "firstName", OfflineStorageService.getFirstName() ?? '');
+        await prefs.setString("userSchoolId", cachedSchoolId ?? '');
+
+        if (!context.mounted) return '';
+        DialogUtil.showSuccessDialog(
+          context,
+          "Login successful! (Offline Mode)",
+        );
+        return "Success";
+      } else {
+        return "Cannot login offline. Please check your internet connection.";
+      }
+    }
+
+    // Online login
     try {
       var url = Uri.parse("$apiUrl/student/loginStudent");
 
@@ -28,10 +58,20 @@ class Authentication {
         var student =
             data["student"]; // ← assuming your API returns this structure
 
-        // Save user info to local storage
+        // Save user info to SharedPreferences (for compatibility)
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString("firstName", student["firstName"]);
         await prefs.setString("userSchoolId", student["schoolId"]);
+
+        // Save to Hive for offline access
+        await OfflineStorageService.saveAuthData(
+          email: email,
+          firstName: student["firstName"],
+          schoolId: student["schoolId"],
+          userId: student["id"] ?? student["_id"],
+          accessToken: data["accessToken"],
+          refreshToken: data["refreshToken"],
+        );
 
         if (!context.mounted) return '';
         DialogUtil.showSuccessDialog(
@@ -45,6 +85,22 @@ class Authentication {
         return errorData["error"] ?? "Failed to log in. Please try again.";
       }
     } on http.ClientException {
+      // Network error - try offline login
+      final cachedEmail = OfflineStorageService.getEmail();
+      if (cachedEmail == email && OfflineStorageService.isLoggedInOffline()) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+            "firstName", OfflineStorageService.getFirstName() ?? '');
+        await prefs.setString(
+            "userSchoolId", OfflineStorageService.getSchoolId() ?? '');
+
+        if (!context.mounted) return '';
+        DialogUtil.showSuccessDialog(
+          context,
+          "Login successful! (Offline Mode)",
+        );
+        return "Success";
+      }
       return "Network error. Please check your internet connection.";
     } on FormatException {
       return "Invalid response format from the server.";
@@ -125,6 +181,9 @@ class Authentication {
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear();
 
+        // Clear Hive offline data
+        await OfflineStorageService.clearAuthData();
+
         if (!context.mounted) return '';
 
         // Navigate to login screen
@@ -136,7 +195,14 @@ class Authentication {
         return errorData["error"] ?? "Failed to log out. Please try again.";
       }
     } on http.ClientException {
-      return "Network error. Please check your internet connection.";
+      // Even if network fails, clear local data for logout
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      await OfflineStorageService.clearAuthData();
+
+      if (!context.mounted) return '';
+      Navigator.pushReplacementNamed(context, "/login");
+      return "Logged out (offline)";
     } on FormatException {
       return "Invalid response format from the server.";
     } catch (error) {

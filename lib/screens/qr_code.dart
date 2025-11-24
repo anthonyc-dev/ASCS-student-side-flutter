@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/socket_service.dart';
 import '../services/permit_service.dart';
+import '../services/network_service.dart';
+import '../widgets/offline_indicator.dart';
 
 class QrCode extends StatefulWidget {
   const QrCode({super.key});
@@ -15,19 +17,42 @@ class QrCode extends StatefulWidget {
 class _QrCodeState extends State<QrCode> {
   final SocketService _socketService = SocketService();
   final PermitService _permitService = PermitService();
+  final NetworkService _networkService = NetworkService();
   String? _qrImageBase64;
   bool _isLoading = true;
   String? _errorMessage;
   String? _studentId;
   Map<String, dynamic>? _permitData;
+  bool _isOffline = false;
 
   @override
   void initState() {
     super.initState();
     _initializeQrListener();
+
+    // Listen to network changes
+    _networkService.connectionStream.listen((isOnline) {
+      if (mounted) {
+        setState(() {
+          _isOffline = !isOnline;
+        });
+        // Only connect socket if online
+        if (isOnline && !_socketService.isConnected) {
+          _socketService.connect();
+        }
+      }
+    });
   }
 
   Future<void> _initializeQrListener() async {
+    // Check connectivity first
+    final isOnline = await _networkService.checkConnectivity();
+    if (mounted) {
+      setState(() {
+        _isOffline = !isOnline;
+      });
+    }
+
     // Get student ID from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     _studentId = prefs.getString('userSchoolId');
@@ -41,26 +66,28 @@ class _QrCodeState extends State<QrCode> {
       return;
     }
 
-    // Check if permit already exists for this student
+    // Check if permit already exists for this student (works offline too)
     await _fetchExistingPermit();
 
-    // Connect to socket if not already connected
-    if (!_socketService.isConnected) {
+    // Connect to socket only if online and not already connected
+    if (!_isOffline && !_socketService.isConnected) {
       _socketService.connect();
     }
 
-    // Listen for QR generation events
-    _socketService.onQrGenerated((data) {
-      // ignore: avoid_print
-      print('QR Generated event received: $data');
+    // Listen for QR generation events (only if online)
+    if (!_isOffline) {
+      _socketService.onQrGenerated((data) {
+        // ignore: avoid_print
+        print('QR Generated event received: $data');
 
-      // Check if this QR is for the current student
-      if (data['studentId'] == _studentId) {
-        // Fetch the full permit data including QR image from API
-        _fetchPermitData();
-        _showQrGeneratedSnackbar();
-      }
-    });
+        // Check if this QR is for the current student
+        if (data['studentId'] == _studentId) {
+          // Fetch the full permit data including QR image from API
+          _fetchPermitData();
+          _showQrGeneratedSnackbar();
+        }
+      });
+    }
 
     if (!mounted) return;
     // Initial state - waiting for QR generation
@@ -324,9 +351,16 @@ class _QrCodeState extends State<QrCode> {
         ),
         foregroundColor: Colors.white,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: _buildQrContent(),
+      body: Column(
+        children: [
+          OfflineIndicator(isOffline: _isOffline),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: _buildQrContent(),
+            ),
+          ),
+        ],
       ),
     );
   }

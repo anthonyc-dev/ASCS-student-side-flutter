@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:my_app/services/offline_storage_service.dart';
 import 'package:my_app/screens/auth/sign_in_screen.dart';
 import 'package:my_app/screens/auth/signup_screen.dart';
 import 'package:my_app/screens/dashboard.dart';
@@ -21,6 +23,11 @@ import 'firebase_options.dart';
 
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive for offline storage
+  await Hive.initFlutter();
+  // Initialize offline storage service
+  await OfflineStorageService.init();
 
   // Initialize Firebase
   await Firebase.initializeApp(
